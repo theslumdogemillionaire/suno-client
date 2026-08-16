@@ -1,0 +1,14 @@
+{
+  "endpoint": "lyrics.submit",
+  "samples": 4,
+  "paths": {
+    "id": {
+      "types": [
+        "string"
+      ],
+      "seen": 4,
+      "total": 4
+    }
+  },
+  "recordedAt": "2026-08-16T23:32:09.031Z"
+}

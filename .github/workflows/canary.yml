@@ -1,0 +1,49 @@
+name: canary
+
+# The unit suite pins our assumptions. Only this notices Suno changing theirs.
+on:
+  schedule:
+    # Once a day. Do NOT make this hourly: each run sends one deliberately
+    # rejected create, and a burst of those trips Suno's rate limiter and can
+    # flip the account's captcha gate. See docs/STATUS.md.
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      paid:
+        description: 'Also run one real generation (10 credits)'
+        type: boolean
+        default: false
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Free probes
+        if: ${{ !inputs.paid }}
+        env:
+          SUNO_COOKIE: ${{ secrets.SUNO_COOKIE }}
+        run: npx tsx scripts/canary.ts
+
+      - name: Free probes + one real generation
+        if: ${{ inputs.paid }}
+        env:
+          SUNO_COOKIE: ${{ secrets.SUNO_COOKIE }}
+        run: npx tsx scripts/canary.ts --paid
+
+      # Exit 1 means a shape moved, exit 2 means the session died or an endpoint
+      # is gone. Both should reach a human, and the step output names the field.
+      - name: Explain a failure
+        if: failure()
+        run: |
+          echo "The Suno API moved, or the session cookie expired."
+          echo "Cookies last about 7 days: refresh the SUNO_COOKIE secret first."
+          echo "If the session is fine, read the probe output above: it names the"
+          echo "endpoint and field that changed. Fix, then re-record baselines with"
+          echo "  npx tsx scripts/record-baselines.ts"

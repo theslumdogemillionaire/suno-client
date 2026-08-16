@@ -1,0 +1,21 @@
+{
+  "endpoint": "captcha.check",
+  "samples": 5,
+  "paths": {
+    "required": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "captcha_version": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    }
+  },
+  "recordedAt": "2026-08-16T23:32:09.031Z"
+}

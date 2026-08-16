@@ -1,0 +1,43 @@
+services:
+  # Unit suite. No network, no credentials, no Suno account needed.
+  #   docker compose run --rm test
+  test:
+    build: .
+    command: npx vitest run tests/unit
+    environment:
+      CI: 'true'
+
+  typecheck:
+    build: .
+    command: npx tsc --noEmit
+
+  # The scheduled health check. Free probes only unless you add --paid.
+  #   docker compose run --rm canary
+  #   docker compose run --rm canary npx tsx scripts/canary.ts --paid
+  #
+  # SUNO_COOKIE holds a ~7 day session for a paid account: keep it in .env,
+  # which is gitignored, and never in this file.
+  canary:
+    build: .
+    command: npx tsx scripts/canary.ts
+    env_file:
+      - .env
+
+  # Re-record response baselines after a verified client update, then commit
+  # src/drift/baselines/. Mounts the source so the new files land on the host.
+  record-baselines:
+    build: .
+    command: npx tsx scripts/record-baselines.ts
+    env_file:
+      - .env
+    volumes:
+      - ./src/drift/baselines:/app/src/drift/baselines
+
+  # Live end-to-end check. Read-only by default; --generate spends 10 credits.
+  smoke:
+    build: .
+    command: npx tsx scripts/smoke.ts
+    env_file:
+      - .env
+    volumes:
+      - ./tmp-songs:/app/tmp-songs

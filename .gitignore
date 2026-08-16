@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Holds a ~7 day Suno session cookie for a paid account.
+.env
+.env.*
+!.env.example
+
+tmp-songs/
+songs/
+coverage/
+.DS_Store

@@ -1,0 +1,45 @@
+{
+  "name": "suno-client",
+  "version": "0.1.0",
+  "description": "Typed Suno client for Node with response-drift detection and a live canary",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "suno-client": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run tests/unit",
+    "test:watch": "vitest tests/unit",
+    "test:live": "vitest run tests/live --testTimeout=600000",
+    "canary": "tsx scripts/canary.ts",
+    "record": "tsx scripts/record-fixtures.ts",
+    "bundle-watch": "tsx scripts/bundle-watch.ts",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "node-id3": "^0.2.9",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

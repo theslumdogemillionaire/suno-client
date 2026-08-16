@@ -1,0 +1,49 @@
+{
+  "endpoint": "lyrics.result",
+  "samples": 8,
+  "paths": {
+    "text": {
+      "types": [
+        "string"
+      ],
+      "seen": 8,
+      "total": 8
+    },
+    "title": {
+      "types": [
+        "string"
+      ],
+      "seen": 8,
+      "total": 8
+    },
+    "status": {
+      "types": [
+        "string"
+      ],
+      "seen": 8,
+      "total": 8
+    },
+    "error_message": {
+      "types": [
+        "string"
+      ],
+      "seen": 8,
+      "total": 8
+    },
+    "tags": {
+      "types": [
+        "array"
+      ],
+      "seen": 4,
+      "total": 7
+    },
+    "tags[]": {
+      "types": [
+        "string"
+      ],
+      "seen": 8,
+      "total": 8
+    }
+  },
+  "recordedAt": "2026-08-16T23:32:09.031Z"
+}

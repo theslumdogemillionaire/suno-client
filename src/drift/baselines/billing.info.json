@@ -1,0 +1,980 @@
+{
+  "endpoint": "billing.info",
+  "samples": 5,
+  "paths": {
+    "subscription_platform": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "is_active": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "is_past_due": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "credits": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "subscription_type": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "subscription_anchor": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "subscription_id": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "renews_on": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "cancel_on": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "period": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "monthly_usage": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "monthly_limit": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "credit_packs": {
+      "types": [
+        "array"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "credit_packs[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 20,
+      "total": 20
+    },
+    "credit_packs[].id": {
+      "types": [
+        "string"
+      ],
+      "seen": 20,
+      "total": 20
+    },
+    "credit_packs[].amount": {
+      "types": [
+        "number"
+      ],
+      "seen": 20,
+      "total": 20
+    },
+    "credit_packs[].price_usd": {
+      "types": [
+        "number"
+      ],
+      "seen": 20,
+      "total": 20
+    },
+    "credit_packs[].price_amount": {
+      "types": [
+        "string"
+      ],
+      "seen": 20,
+      "total": 20
+    },
+    "credit_packs[].price_currency_code": {
+      "types": [
+        "string"
+      ],
+      "seen": 20,
+      "total": 20
+    },
+    "download_credit_packs": {
+      "types": [
+        "array"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "plan": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "plan.id": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "plan.level": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "plan.plan_key": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "plan.name": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "plan.features": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "plan.monthly_price_usd": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "plan.annual_price_usd": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "plan.usage_plan_features": {
+      "types": [
+        "array"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "plan.usage_plan_features[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 95,
+      "total": 95
+    },
+    "plan.usage_plan_features[].name": {
+      "types": [
+        "string"
+      ],
+      "seen": 95,
+      "total": 95
+    },
+    "plan.prices": {
+      "types": [
+        "array"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "plan.prices[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 170,
+      "total": 170
+    },
+    "plan.prices[].period_type": {
+      "types": [
+        "string"
+      ],
+      "seen": 170,
+      "total": 170
+    },
+    "plan.prices[].currency": {
+      "types": [
+        "string"
+      ],
+      "seen": 170,
+      "total": 170
+    },
+    "plan.prices[].price": {
+      "types": [
+        "number"
+      ],
+      "seen": 170,
+      "total": 170
+    },
+    "models": {
+      "types": [
+        "array"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "models[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].can_use": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].max_lengths": {
+      "types": [
+        "object"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].max_lengths.title": {
+      "types": [
+        "number"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].max_lengths.prompt": {
+      "types": [
+        "number"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].max_lengths.tags": {
+      "types": [
+        "number"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].max_lengths.negative_tags": {
+      "types": [
+        "number"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].max_lengths.gpt_description_prompt": {
+      "types": [
+        "number"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].name": {
+      "types": [
+        "string"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].external_key": {
+      "types": [
+        "string"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].major_version": {
+      "types": [
+        "number"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].description": {
+      "types": [
+        "string"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].is_default_free_model": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].is_default_model": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].badges": {
+      "types": [
+        "array"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].badges[]": {
+      "types": [
+        "string"
+      ],
+      "seen": 25,
+      "total": 25
+    },
+    "models[].model_badges": {
+      "types": [
+        "array"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].model_badges[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 25,
+      "total": 25
+    },
+    "models[].model_badges[].display_name": {
+      "types": [
+        "string"
+      ],
+      "seen": 25,
+      "total": 25
+    },
+    "models[].model_badges[].light": {
+      "types": [
+        "object"
+      ],
+      "seen": 25,
+      "total": 25
+    },
+    "models[].model_badges[].light.text_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 25,
+      "total": 25
+    },
+    "models[].model_badges[].light.background_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 25,
+      "total": 25
+    },
+    "models[].model_badges[].light.border_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 25,
+      "total": 25
+    },
+    "models[].model_badges[].dark": {
+      "types": [
+        "object"
+      ],
+      "seen": 25,
+      "total": 25
+    },
+    "models[].model_badges[].dark.text_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 25,
+      "total": 25
+    },
+    "models[].model_badges[].dark.background_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 25,
+      "total": 25
+    },
+    "models[].model_badges[].dark.border_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 25,
+      "total": 25
+    },
+    "models[].style": {
+      "types": [
+        "object"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].style.light": {
+      "types": [
+        "object"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].style.light.text_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].style.dark": {
+      "types": [
+        "object"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].style.dark.text_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].capabilities": {
+      "types": [
+        "array"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].capabilities[]": {
+      "types": [
+        "string"
+      ],
+      "seen": 425,
+      "total": 425
+    },
+    "models[].features": {
+      "types": [
+        "array"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].features[]": {
+      "types": [
+        "string"
+      ],
+      "seen": 100,
+      "total": 100
+    },
+    "models[].allowed_condition_combinations": {
+      "types": [
+        "array"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "models[].allowed_condition_combinations[]": {
+      "types": [
+        "array"
+      ],
+      "seen": 380,
+      "total": 380
+    },
+    "models[].allowed_condition_combinations[][]": {
+      "types": [
+        "string"
+      ],
+      "seen": 540,
+      "total": 540
+    },
+    "models[].id": {
+      "types": [
+        "string"
+      ],
+      "seen": 45,
+      "total": 45
+    },
+    "plan_price": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "plan_currency": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "plan_currency_price": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "payment_method_type": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "can_upgrade_immediately": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "plans": {
+      "types": [
+        "array"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "plans[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 15,
+      "total": 15
+    },
+    "plans[].id": {
+      "types": [
+        "string"
+      ],
+      "seen": 15,
+      "total": 15
+    },
+    "plans[].level": {
+      "types": [
+        "number"
+      ],
+      "seen": 15,
+      "total": 15
+    },
+    "plans[].plan_key": {
+      "types": [
+        "string"
+      ],
+      "seen": 15,
+      "total": 15
+    },
+    "plans[].name": {
+      "types": [
+        "string"
+      ],
+      "seen": 15,
+      "total": 15
+    },
+    "plans[].features": {
+      "types": [
+        "string"
+      ],
+      "seen": 15,
+      "total": 15
+    },
+    "plans[].monthly_price_usd": {
+      "types": [
+        "number"
+      ],
+      "seen": 15,
+      "total": 15
+    },
+    "plans[].annual_price_usd": {
+      "types": [
+        "number"
+      ],
+      "seen": 15,
+      "total": 15
+    },
+    "plans[].usage_plan_features": {
+      "types": [
+        "array"
+      ],
+      "seen": 15,
+      "total": 15
+    },
+    "plans[].usage_plan_features[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 190,
+      "total": 190
+    },
+    "plans[].usage_plan_features[].name": {
+      "types": [
+        "string"
+      ],
+      "seen": 190,
+      "total": 190
+    },
+    "plans[].prices": {
+      "types": [
+        "array"
+      ],
+      "seen": 15,
+      "total": 15
+    },
+    "plans[].prices[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 340,
+      "total": 340
+    },
+    "plans[].prices[].period_type": {
+      "types": [
+        "string"
+      ],
+      "seen": 340,
+      "total": 340
+    },
+    "plans[].prices[].currency": {
+      "types": [
+        "string"
+      ],
+      "seen": 340,
+      "total": 340
+    },
+    "plans[].prices[].price": {
+      "types": [
+        "number"
+      ],
+      "seen": 340,
+      "total": 340
+    },
+    "accessible_features": {
+      "types": [
+        "array"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "accessible_features[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 95,
+      "total": 95
+    },
+    "accessible_features[].name": {
+      "types": [
+        "string"
+      ],
+      "seen": 95,
+      "total": 95
+    },
+    "revcat_subscriptions_offering_id": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "total_credits_left": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "free_persona_clips_remaining": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "free_cover_clips_remaining": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "free_remasters_remaining": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "free_mobile_remasters_remaining": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "free_mobile_v4_gens_remaining": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "free_web_v4_gens_remaining": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "free_vox_gens_remaining": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "has_been_subscriber_before": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "has_valid_school_email": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "has_been_student_subscriber_before": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "day0_boost": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "promotions": {
+      "types": [
+        "array"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "audio_upload_limits": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "audio_upload_limits.min": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "audio_upload_limits.max": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "voice_upload_limits": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "voice_upload_limits.min": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "voice_upload_limits.max": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "voice_record_limits": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "voice_record_limits.min": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "voice_record_limits.max": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "agentic_limits": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "agentic_limits.max_atoms": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "agentic_limits.max_images": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "agentic_limits.max_audio_refs": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "period_end": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "remaster_model_types": {
+      "types": [
+        "array"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "remaster_model_types[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 15,
+      "total": 15
+    },
+    "remaster_model_types[].name": {
+      "types": [
+        "string"
+      ],
+      "seen": 15,
+      "total": 15
+    },
+    "remaster_model_types[].external_key": {
+      "types": [
+        "string"
+      ],
+      "seen": 15,
+      "total": 15
+    },
+    "remaster_model_types[].is_default_model": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 15,
+      "total": 15
+    },
+    "remaster_model_types[].can_use": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 15,
+      "total": 15
+    },
+    "is_pause_scheduled": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "is_paused": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "is_gifted": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    }
+  },
+  "recordedAt": "2026-08-16T23:32:09.031Z"
+}

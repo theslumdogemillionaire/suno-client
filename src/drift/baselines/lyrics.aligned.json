@@ -1,0 +1,161 @@
+{
+  "endpoint": "lyrics.aligned",
+  "samples": 5,
+  "paths": {
+    "aligned_words": {
+      "types": [
+        "array"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "waveform_data": {
+      "types": [
+        "array"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "waveform_data[]": {
+      "types": [
+        "number"
+      ],
+      "seen": 2149,
+      "total": 2149
+    },
+    "hoot_cer": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "is_streamed": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "aligned_lyrics": {
+      "types": [
+        "array"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "aligned_words[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 3,
+      "total": 3
+    },
+    "aligned_words[].word": {
+      "types": [
+        "string"
+      ],
+      "seen": 3,
+      "total": 3
+    },
+    "aligned_words[].success": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 3,
+      "total": 3
+    },
+    "aligned_words[].start_s": {
+      "types": [
+        "number"
+      ],
+      "seen": 3,
+      "total": 3
+    },
+    "aligned_words[].end_s": {
+      "types": [
+        "number"
+      ],
+      "seen": 3,
+      "total": 3
+    },
+    "aligned_words[].p_align": {
+      "types": [
+        "number"
+      ],
+      "seen": 3,
+      "total": 3
+    },
+    "aligned_lyrics[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 3,
+      "total": 3
+    },
+    "aligned_lyrics[].text": {
+      "types": [
+        "string"
+      ],
+      "seen": 3,
+      "total": 3
+    },
+    "aligned_lyrics[].start_s": {
+      "types": [
+        "number"
+      ],
+      "seen": 3,
+      "total": 3
+    },
+    "aligned_lyrics[].end_s": {
+      "types": [
+        "number"
+      ],
+      "seen": 3,
+      "total": 3
+    },
+    "aligned_lyrics[].section": {
+      "types": [
+        "string"
+      ],
+      "seen": 3,
+      "total": 3
+    },
+    "aligned_lyrics[].words": {
+      "types": [
+        "array"
+      ],
+      "seen": 3,
+      "total": 3
+    },
+    "aligned_lyrics[].words[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 9,
+      "total": 9
+    },
+    "aligned_lyrics[].words[].text": {
+      "types": [
+        "string"
+      ],
+      "seen": 9,
+      "total": 9
+    },
+    "aligned_lyrics[].words[].start_s": {
+      "types": [
+        "number"
+      ],
+      "seen": 9,
+      "total": 9
+    },
+    "aligned_lyrics[].words[].end_s": {
+      "types": [
+        "number"
+      ],
+      "seen": 9,
+      "total": 9
+    }
+  },
+  "recordedAt": "2026-08-16T23:32:09.031Z"
+}

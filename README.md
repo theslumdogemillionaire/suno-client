@@ -1,0 +1,198 @@
+# suno-client
+
+A typed Node client for Suno's private web API, built to survive Suno changing it.
+
+There is no official Suno API. This talks to the web app's endpoints with your
+browser session, which puts it outside Suno's terms of service. Read
+[docs/STATUS.md](docs/STATUS.md) before building anything on it.
+
+```ts
+import { Suno } from 'suno-client';
+
+const suno = new Suno({ cookie: process.env.SUNO_COOKIE });
+
+const job = await suno.generate({
+  title: 'Night Drive',
+  tags: 'indie rock, jangly and nostalgic, 110 BPM, warm male vocals',
+  lyrics: '[Verse]\nHeadlights on an empty road\n[Chorus]\nKeep driving, keep driving',
+});
+
+for await (const update of job.watch()) {
+  console.log(update.clips.map((c) => `${c.title}: ${c.status}`).join(', '));
+}
+
+await suno.downloadAll(job.completed, { outputDir: './songs' });
+```
+
+## Why this exists
+
+Every unofficial Suno client eventually breaks, because Suno changes the API and
+nobody finds out until production 422s. In August 2026 `title: null` stopped
+being accepted and the most complete open-source client stayed broken for two
+weeks. Its 134 tests did not notice, because they tested its own output format
+and never touched the network.
+
+So this client is built around one question: **how do we find out that Suno moved
+before our users do?** Three answers, in descending order of how much they help.
+
+### 1. A free request-schema probe
+
+Suno validates the request body **before** it validates the request token.
+So a body that is schema-correct but names a nonsense model never reaches
+generation, never costs a credit, and still reveals whether the schema accepts
+our shape.
+
+```
+body ok, bogus model  -> 422 token_validation_failed     schema is FINE
+body missing a field  -> 422 body.params.X "missing"     schema DRIFTED
+body has a wrong type -> 422 body.params.X "string_type" schema DRIFTED
+```
+
+That is a free, exact, daily check on the one thing that actually broke last
+time. It runs in [`scripts/canary.ts`](scripts/canary.ts) and names the field.
+
+It is free in credits but **not free in reputation**: each probe is a rejected
+create, and a burst of them looks like abuse. Developing this feature flipped the
+test account's captcha gate on. Hence one variant per run, rotated daily. The
+full story is in [docs/STATUS.md](docs/STATUS.md).
+
+### 2. Response-shape drift detection
+
+Zod schemas run in passthrough mode, so a field Suno adds never breaks a parse.
+Separately, every response is fingerprinted and compared against a committed
+baseline:
+
+- a **new** field is `info`, because feature launches should not page anyone
+- a field **we read** that disappears or changes type is `error`
+- anything else is `warn`
+
+```ts
+const suno = new Suno({
+  cookie,
+  onDrift: (report) => {
+    if (report.degraded) alertMe(formatDriftReport(report));
+  },
+});
+```
+
+Getting this quiet enough to be worth reading needed two non-obvious fixes,
+both documented in [docs/STATUS.md](docs/STATUS.md).
+
+### 3. Errors that say what to do
+
+Every `SunoError` carries two booleans, and callers branch on those rather than
+on class names:
+
+- `retryable` - the same request may succeed later
+- `alert` - a human is needed; waiting will not help
+
+A long-running consumer keeps going through the retryable class and stops loudly
+on the alert class. Treating a schema drift as transient means burning credits on
+requests that can never succeed.
+
+| code | retryable | alert | means |
+| --- | --- | --- | --- |
+| `rate_limited` | yes | no | back off |
+| `network`, `timeout` | yes | no | transient |
+| `api_error` (5xx) | yes | no | Suno is unwell |
+| `invalid_input` | no | no | the caller's or the user's text was rejected |
+| `insufficient_credits` | no | no | out of credits |
+| `not_found` | no | no | bad id |
+| `auth_expired` | no | no | handled internally: refresh and replay once |
+| `captcha_required` | no | yes | generate one song by hand at suno.com |
+| `auth_dead` | no | yes | the cookie is finished, log in again |
+| `schema_drift` | no | yes | Suno changed the request schema |
+| `route_gone` | no | yes | an endpoint moved |
+
+## Install
+
+```bash
+npm install
+cp .env.example .env    # then paste your __client cookie
+```
+
+Get the cookie: log into suno.com, devtools, Application, Cookies, `suno.com`,
+copy `__client`. It lasts about 7 days. A full `Cookie:` header pasted whole
+works too.
+
+## Running things
+
+Everything runs in Docker.
+
+```bash
+docker compose run --rm test              # unit suite, no network, no account
+docker compose run --rm typecheck
+docker compose run --rm canary            # free probes, needs .env
+docker compose run --rm smoke             # live read-only check
+docker compose run --rm record-baselines  # after a verified client change
+```
+
+Locally, if you prefer:
+
+```bash
+npm test
+npm run canary
+npm run canary -- --paid    # adds one real generation, 10 credits
+```
+
+## For a live consumer (bots, overlays, queues)
+
+`generate()` returns a `GenerationJob` rather than clips, because the interesting
+part of a Suno generation is the two minutes after you submit it.
+
+```ts
+const job = await suno.generate({ title, tags, lyrics });
+await chat.say(`generating ${job.ids.length} takes`);
+
+for await (const update of job.watch()) {
+  for (const clip of update.changed) {
+    await chat.say(`${clip.title}: ${clip.status}`);
+  }
+}
+
+for (const { clip, reason } of job.failed) {
+  await chat.say(`${clip.title} failed: ${reason}`);
+}
+```
+
+Jobs survive a restart: `suno.job(ids)` rehydrates one from clip ids you stored.
+
+For a karaoke overlay, `suno.alignedLyrics(clipId)` gives word-level timings and
+`suno.lrc(clipId)` gives an LRC file.
+
+Three things that matter when prompts come from strangers:
+
+- Content rejections arrive as `invalid_input`. Reply in chat; do not retry.
+- Call `suno.captchaCheck()` on a schedule. A gated account cannot generate, and
+  clearing it needs a human at suno.com.
+- Generation costs 10 credits per call and returns 2 clips. Budget accordingly.
+
+## Layout
+
+```
+src/
+  suno.ts          the ergonomic surface
+  client.ts        transport: auth, retry, error classification, drift hook
+  auth.ts          Clerk cookie -> session -> JWT, staleness rule
+  poll.ts          GenerationJob: watch(), wait(), completed, failed
+  download.ts      MP3 + ID3 with synced lyrics
+  errors.ts        the taxonomy above
+  schemas.ts       zod, passthrough
+  api/             one module per endpoint group
+  drift/
+    shape.ts       response fingerprinting
+    detect.ts      baseline diffing
+    probe.ts       the free request-schema probe
+    baselines/     committed, recorded from live traffic
+scripts/
+  canary.ts        the scheduled health check
+  record-baselines.ts
+  smoke.ts
+docs/
+  API.md           full wire spec: every endpoint, every field
+  STATUS.md        what works, what is broken, what it cost to learn
+```
+
+## License
+
+MIT.

@@ -1,0 +1,616 @@
+{
+  "endpoint": "feed.byIds",
+  "samples": 5,
+  "paths": {
+    "[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].status": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].title": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].play_count": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].upvote_count": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].allow_comments": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].is_verified": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].id": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].entity_type": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].video_url": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].audio_url": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].media_urls": {
+      "types": [
+        "array"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].media_urls[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 10,
+      "total": 10
+    },
+    "[].media_urls[].url": {
+      "types": [
+        "string"
+      ],
+      "seen": 10,
+      "total": 10
+    },
+    "[].media_urls[].content_type": {
+      "types": [
+        "string"
+      ],
+      "seen": 10,
+      "total": 10
+    },
+    "[].media_urls[].delivery": {
+      "types": [
+        "string"
+      ],
+      "seen": 10,
+      "total": 10
+    },
+    "[].media_urls[].encoding": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 10
+    },
+    "[].image_url": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].image_large_url": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].major_model_version": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].model_name": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.tags": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.prompt": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.type": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.duration": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.refund_credits": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.stream": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.make_instrumental": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.can_remix": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.is_remix": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.priority": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.has_stem": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.uses_latest_model": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songcard": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songcard.display_name": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songcard.light": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songcard.light.text_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songcard.light.background_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songcard.light.border_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songcard.dark": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songcard.dark.text_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songcard.dark.background_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songcard.dark.border_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songrow": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songrow.display_name": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songrow.light": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songrow.light.text_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songrow.light.background_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songrow.light.border_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songrow.dark": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songrow.dark.text_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songrow.dark.background_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.model_badges.songrow.dark.border_color": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.image_config": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.image_config.use_image_config_template": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.image_config.id": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.image_config.default_cover_style": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.is_mumble": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].is_liked": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].user_id": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].display_name": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].handle": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].is_handle_updated": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].avatar_image_url": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].is_trashed": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].is_hidden": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].created_at": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].is_public": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].is_persona_root": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].is_following_creator": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].albums": {
+      "types": [
+        "array"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].ownership": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].ownership.ownership_reason": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].comment_count": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].flag_count": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].is_contest_clip": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].has_hook": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].batch_index": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].action_config": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].action_config.actions": {
+      "types": [
+        "array"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].action_config.actions[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 85,
+      "total": 85
+    },
+    "[].action_config.actions[].action_type": {
+      "types": [
+        "string"
+      ],
+      "seen": 85,
+      "total": 85
+    },
+    "[].action_config.actions[].disabled": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 85,
+      "total": 85
+    },
+    "[].action_config.actions[].visible": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 85,
+      "total": 85
+    },
+    "[].explicit": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 2,
+      "total": 3
+    }
+  },
+  "recordedAt": "2026-08-16T23:32:09.031Z"
+}

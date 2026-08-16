@@ -1,0 +1,167 @@
+import { createWriteStream } from 'node:fs';
+import { mkdir, rename, unlink } from 'node:fs/promises';
+import { join } from 'node:path';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+
+import NodeID3 from 'node-id3';
+
+import { alignedLyrics } from './api/misc.js';
+import type { SunoClient } from './client.js';
+import { SunoError } from './errors.js';
+import type { AlignedWord, Clip } from './schemas.js';
+
+export interface DownloadOptions {
+  /** Directory. Created if missing. */
+  outputDir: string;
+  /** Grab the mp4 instead of the mp3, when the clip has one. */
+  video?: boolean;
+  /**
+   * Write ID3 tags, including word-level synchronised lyrics when available.
+   * Costs one extra request per clip; skip it for bulk archival.
+   */
+  embedTags?: boolean;
+  signal?: AbortSignal;
+  onProgress?: (info: { clipId: string; bytes: number }) => void;
+}
+
+/** Filesystems cap a path component at 255 bytes; leave room for the id
+ * suffix, the extension and the `.part` we write to first. */
+const MAX_SLUG_LENGTH = 180;
+
+/**
+ * `<title-slug>-<first 8 of id>.<ext>`.
+ *
+ * The id suffix is not decoration: Suno returns two clips per generation with
+ * identical titles, so a title-only filename means the second download silently
+ * overwrites the first.
+ */
+export function clipFilename(title: string, id: string, ext: string): string {
+  // Normalise first. toLowerCase() can *manufacture* combining marks (U+0130
+  // becomes i + U+0307), and NFD input has them anyway, so without this a
+  // title like "İstanbul" slugs to "i-stanbul" and "Déjà Vu" to "de-ja-vu".
+  let slug = '';
+  for (const ch of title.toLowerCase().normalize('NFC')) {
+    if (/[\p{L}\p{N}\p{M}]/u.test(ch)) {
+      slug += ch;
+    } else if (slug !== '' && !slug.endsWith('-')) {
+      slug += '-';
+    }
+  }
+  if (slug.length > MAX_SLUG_LENGTH) slug = slug.slice(0, MAX_SLUG_LENGTH);
+  while (slug.endsWith('-')) slug = slug.slice(0, -1);
+  const shortId = id.slice(0, 8);
+  return slug === '' ? `${shortId}.${ext}` : `${slug}-${shortId}.${ext}`;
+}
+
+function pickUrl(clip: Clip, video: boolean): string {
+  const url = video ? clip.video_url : clip.audio_url;
+  if (typeof url !== 'string' || url === '') {
+    throw new SunoError({
+      code: 'not_found',
+      message: `clip ${clip.id} has no ${video ? 'video' : 'audio'} URL (status: ${clip.status})`,
+    });
+  }
+  return url;
+}
+
+/** Word timings to an LRC-style SYLT payload. */
+export function toSyncedLyrics(words: readonly AlignedWord[]): Array<{ text: string; timeStamp: number }> {
+  return words.map((w) => ({ text: w.word, timeStamp: Math.round(w.start_s * 1000) }));
+}
+
+export async function downloadClip(
+  client: SunoClient,
+  clip: Clip,
+  options: DownloadOptions,
+): Promise<string> {
+  const url = pickUrl(clip, options.video ?? false);
+  const ext = options.video ? 'mp4' : 'mp3';
+  await mkdir(options.outputDir, { recursive: true });
+  const target = join(options.outputDir, clipFilename(clip.title, clip.id, ext));
+  // Download to a temp name and rename on success, so an interrupted transfer
+  // never leaves a truncated mp3 that looks like a finished download.
+  const tmp = `${target}.part`;
+
+  const res = await fetch(url, options.signal ? { signal: options.signal } : {});
+  if (!res.ok || !res.body) {
+    throw new SunoError({
+      code: 'api_error',
+      message: `download failed for ${clip.id}: HTTP ${res.status}`,
+      status: res.status,
+    });
+  }
+
+  let bytes = 0;
+  const source = Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0]);
+  source.on('data', (chunk: Buffer) => {
+    bytes += chunk.length;
+    options.onProgress?.({ clipId: clip.id, bytes });
+  });
+
+  try {
+    await pipeline(source, createWriteStream(tmp));
+    await rename(tmp, target);
+  } catch (err) {
+    await unlink(tmp).catch(() => undefined);
+    throw err;
+  }
+
+  if (options.embedTags !== false && ext === 'mp3') {
+    await embedTags(client, clip, target, options.signal).catch(() => {
+      // Tagging is a nicety. A failure here must not lose the audio we already
+      // have on disk.
+    });
+  }
+
+  return target;
+}
+
+async function embedTags(
+  client: SunoClient,
+  clip: Clip,
+  path: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const tags: NodeID3.Tags = {
+    title: clip.title || 'Untitled',
+    artist: 'Suno',
+    comment: { language: 'eng', text: clip.metadata?.tags ?? '' },
+  };
+  const lyrics = clip.metadata?.prompt;
+  if (typeof lyrics === 'string' && lyrics !== '') {
+    tags.unsynchronisedLyrics = { language: 'eng', text: lyrics };
+  }
+
+  const words = await alignedLyrics(client, clip.id, signal).catch(() => [] as AlignedWord[]);
+  if (words.length > 0) {
+    tags.synchronisedLyrics = [
+      {
+        language: 'eng',
+        timeStampFormat: 2, // milliseconds
+        contentType: 1, // lyrics
+        shortText: clip.title,
+        synchronisedText: toSyncedLyrics(words),
+      },
+    ];
+  }
+
+  NodeID3.update(tags, path);
+}
+
+export async function downloadClips(
+  client: SunoClient,
+  clips: readonly Clip[],
+  options: DownloadOptions,
+): Promise<{ downloaded: string[]; failed: Array<{ clipId: string; error: string }> }> {
+  const downloaded: string[] = [];
+  const failed: Array<{ clipId: string; error: string }> = [];
+  for (const clip of clips) {
+    try {
+      downloaded.push(await downloadClip(client, clip, options));
+    } catch (err) {
+      failed.push({ clipId: clip.id, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+  return { downloaded, failed };
+}
