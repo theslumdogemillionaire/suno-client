@@ -53,8 +53,16 @@ export function loadBaselines(dir: string = baselineDir()): Map<string, Baseline
   try {
     entries = readdirSync(dir);
   } catch {
-    // No baselines recorded yet. Drift detection simply stays quiet rather than
-    // refusing to start: a fresh clone must still be able to make a request.
+    // A missing directory means the build did not ship the baselines, which
+    // leaves drift detection inert. Silent-when-broken is the exact failure this
+    // project exists to prevent, so it gets a warning rather than a shrug. A
+    // fresh clone with no baselines yet still starts fine; it just cannot warn.
+    process.emitWarning(
+      `suno-client: no drift baselines at ${dir}. Response-drift detection is OFF. ` +
+        'If this is a built package, the build did not copy src/drift/baselines. ' +
+        'If this is a fresh checkout, run: npx tsx scripts/record-baselines.ts',
+      'SunoClientWarning',
+    );
     return map;
   }
   for (const name of entries) {

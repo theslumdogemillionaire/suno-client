@@ -37,6 +37,11 @@ before our users do?** Three answers, in descending order of how much they help.
 
 ### 1. A free request-schema probe
 
+This replaces the obvious approach, which was to scrape suno.com's JS bundle and
+diff the payload shape out of minified code. Asking the server directly is
+strictly better: it is exact, it is authoritative, and it does not break when
+Suno changes bundler.
+
 Suno validates the request body **before** it validates the request token.
 So a body that is schema-correct but names a nonsense model never reaches
 generation, never costs a credit, and still reveals whether the schema accepts
@@ -50,6 +55,10 @@ body has a wrong type -> 422 body.params.X "string_type" schema DRIFTED
 
 That is a free, exact, daily check on the one thing that actually broke last
 time. It runs in [`scripts/canary.ts`](scripts/canary.ts) and names the field.
+
+It keeps working when the account is captcha-gated, which is the case that could
+have made the whole idea worthless: schema errors still surface ahead of the gate,
+so the canary cannot sit green while blind. Verified.
 
 It is free in credits but **not free in reputation**: each probe is a rejected
 create, and a burst of them looks like abuse. Developing this feature flipped the
@@ -131,8 +140,18 @@ Locally, if you prefer:
 
 ```bash
 npm test
+npm run build               # also copies the drift baselines into dist/
 npm run canary
 npm run canary -- --paid    # adds one real generation, 10 credits
+npm run smoke               # live read-only check
+```
+
+There is also a small CLI for operational work, once built:
+
+```bash
+node dist/cli.js credits
+node dist/cli.js list 10
+node dist/cli.js generate --title T --tags "pop, warm" --lyrics-file song.txt --wait --download ./songs
 ```
 
 ## For a live consumer (bots, overlays, queues)

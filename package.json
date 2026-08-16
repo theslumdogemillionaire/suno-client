@@ -19,18 +19,19 @@
     "suno-client": "./dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "src/drift/baselines"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run tests/unit",
     "test:watch": "vitest tests/unit",
     "test:live": "vitest run tests/live --testTimeout=600000",
     "canary": "tsx scripts/canary.ts",
-    "record": "tsx scripts/record-fixtures.ts",
-    "bundle-watch": "tsx scripts/bundle-watch.ts",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "record-baselines": "tsx scripts/record-baselines.ts",
+    "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
     "node-id3": "^0.2.9",

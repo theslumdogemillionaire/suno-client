@@ -28,6 +28,13 @@ import { sleep } from '../internal/retry.js';
  *
  * If the second had also returned token_validation_failed, the probe would be
  * worthless. It did not, so schema errors provably surface first.
+ *
+ * Re-verified 2026-08-17 on a captcha-GATED account, which is the case that
+ * could have made this whole thing a lie: if gating short-circuited ahead of
+ * body validation, the probe would answer "schema fine" unconditionally and the
+ * canary would sit permanently green while blind. It does not. A `title: null`
+ * body on a gated account still returns `body.params.title`, so the probe stays
+ * honest in both states.
  */
 
 /**

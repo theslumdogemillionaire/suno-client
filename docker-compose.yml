@@ -21,7 +21,9 @@ services:
     build: .
     command: npx tsx scripts/canary.ts
     env_file:
-      - .env
+      # Optional so a fresh clone can still build and run the offline targets.
+      - path: .env
+        required: false
 
   # Re-record response baselines after a verified client update, then commit
   # src/drift/baselines/. Mounts the source so the new files land on the host.
@@ -29,7 +31,9 @@ services:
     build: .
     command: npx tsx scripts/record-baselines.ts
     env_file:
-      - .env
+      # Optional so a fresh clone can still build and run the offline targets.
+      - path: .env
+        required: false
     volumes:
       - ./src/drift/baselines:/app/src/drift/baselines
 
@@ -38,6 +42,8 @@ services:
     build: .
     command: npx tsx scripts/smoke.ts
     env_file:
-      - .env
+      # Optional so a fresh clone can still build and run the offline targets.
+      - path: .env
+        required: false
     volumes:
       - ./tmp-songs:/app/tmp-songs

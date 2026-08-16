@@ -64,6 +64,12 @@ To avoid it: the probe defaults to **one** variant per run, spaced 15s, rotated
 daily by `variantForDay()`. Do not run `--all-variants` on a schedule, and never
 put the probe in a health check or a loop.
 
+The probe still works while gated, which is the case that could have made it
+useless. Verified 2026-08-17 on this now-gated account: a `title: null` body
+still returns `body.params.title` rather than the gate error, so schema
+validation genuinely runs first in both states and the canary cannot go
+permanently green while blind.
+
 ## Sharp edges, each of which cost something
 
 **`title` must be a string.** Around 2026-08-01, `title: null` started returning
