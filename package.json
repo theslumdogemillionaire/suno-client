@@ -2,8 +2,28 @@
   "name": "suno-client",
   "version": "0.1.0",
   "description": "Typed Suno client for Node with response-drift detection and a live canary",
-  "type": "module",
+  "keywords": [
+    "suno",
+    "suno-ai",
+    "music",
+    "ai-music",
+    "generative-music",
+    "unofficial-api",
+    "typescript",
+    "twitch",
+    "lyrics",
+    "beat-grid"
+  ],
+  "homepage": "https://github.com/theslumdogemillionaire/suno-client#readme",
+  "bugs": {
+    "url": "https://github.com/theslumdogemillionaire/suno-client/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theslumdogemillionaire/suno-client.git"
+  },
   "license": "WTFPL",
+  "type": "module",
   "engines": {
     "node": ">=22"
   },
@@ -19,9 +39,9 @@
     "suno-client": "./dist/cli.js"
   },
   "files": [
-    "dist",
-    "src/drift/baselines"
+    "dist"
   ],
+  "sideEffects": false,
   "scripts": {
     "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
     "typecheck": "tsc --noEmit",
@@ -31,7 +51,8 @@
     "canary": "tsx scripts/canary.ts",
     "lint": "tsc --noEmit",
     "record-baselines": "tsx scripts/record-baselines.ts",
-    "smoke": "tsx scripts/smoke.ts"
+    "smoke": "tsx scripts/smoke.ts",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "node-id3": "^0.2.9",

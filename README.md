@@ -123,6 +123,16 @@ requests that can never succeed.
 ## Install
 
 ```bash
+npm install suno-client
+```
+
+ESM only, Node 22+. There is no CommonJS build: `require()` will not work, use
+`await import('suno-client')` from CJS.
+
+To work on the client itself instead:
+
+```bash
+git clone https://github.com/theslumdogemillionaire/suno-client && cd suno-client
 npm install
 cp .env.example .env    # then paste your __client cookie
 ```
