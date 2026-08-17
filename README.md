@@ -1,5 +1,12 @@
 # suno-client
 
+[![ci](https://github.com/theslumdogemillionaire/suno-client/actions/workflows/ci.yml/badge.svg)](https://github.com/theslumdogemillionaire/suno-client/actions/workflows/ci.yml)
+[![tests](https://img.shields.io/badge/tests-262%20passing-brightgreen)](tests/unit)
+[![typescript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](tsconfig.json)
+[![node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=nodedotjs&logoColor=white)](package.json)
+[![schema canary](https://img.shields.io/badge/schema%20canary-0%20credits-blueviolet)](src/drift/probe.ts)
+[![license](https://img.shields.io/badge/license-WTFPL-black)](LICENSE)
+
 A typed Node client for Suno's private web API, built to survive Suno changing it.
 
 There is no official Suno API. This talks to the web app's endpoints with your
