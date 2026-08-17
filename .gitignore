@@ -7,8 +7,10 @@ dist/
 .env.*
 !.env.example
 
-# .npmrc itself is committed and holds only an env-var reference. Any local
-# variant is assumed to contain a real token.
+# No .npmrc is committed. Publishing happens from CI via Trusted Publishing,
+# so there is no token to place anywhere. A local one would only ever hold a
+# credential, and it silently outranks `npm login`.
+.npmrc
 .npmrc.*
 
 tmp-songs/

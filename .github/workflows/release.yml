@@ -1,11 +1,15 @@
 name: release
 
-# Publishes on a version tag, from CI rather than from a laptop.
+# Publishes on a version tag using npm Trusted Publishing (OIDC).
 #
-# Two reasons that matters beyond convenience. The npm token lives in GitHub
-# secrets instead of in a shell history or a ~/.npmrc, and `--provenance` gets
-# npm to attest which commit and which workflow produced the tarball, which is
-# the difference between "trust me" and a verifiable build.
+# No token anywhere: not in a secret, not in a ~/.npmrc, not in a shell history.
+# GitHub Actions proves its identity to npm directly, npm checks it against the
+# trusted publisher configured for this package, and the tarball arrives with a
+# provenance attestation. Nothing to rotate and nothing to leak.
+#
+# Configure the publisher first at
+#   npmjs.com > package > Settings > Trusted Publisher
+# pointing at this repository and this workflow filename.
 on:
   push:
     tags: ['v*']
@@ -16,15 +20,27 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      # Required for provenance: the OIDC token is what npm verifies.
+      # The OIDC token is the whole mechanism. Without this the publish falls
+      # back to looking for a token and fails.
       id-token: write
     steps:
       - uses: actions/checkout@v4
+
+      # Node 24, not 22. Trusted publishing needs npm >= 11.5.1 and Node 22
+      # still ships npm 10.9.8, so a 22 runner fails with no useful message.
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org
           cache: npm
+
+      # Belt and braces: pin the npm major explicitly so a change in what the
+      # runner bundles cannot silently drop us below the minimum, and print both
+      # versions so the next failure is diagnosable from the log alone.
+      - run: npm install -g npm@^11
+      - run: |
+          node --version
+          npm --version
 
       - run: npm ci
       - run: npm run typecheck
@@ -45,11 +61,3 @@ jobs:
           fi
 
       - run: npm publish --provenance --access public
-        env:
-          # Both, deliberately. setup-node writes the token into the USER npmrc
-          # as NODE_AUTH_TOKEN, but this repo's own .npmrc sets the same key from
-          # SUNO_CLIENT_NPM_TOKEN, and project config outranks user config. With
-          # only NODE_AUTH_TOKEN set, npm would send the literal unexpanded
-          # string and the publish would 401 with nothing obviously wrong.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          SUNO_CLIENT_NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

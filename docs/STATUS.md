@@ -205,3 +205,26 @@ August `title` change, because Suno changed and we did not. What it does catch i
 us breaking ourselves, which is at least as common and free to detect.
 
 Only the canary sees Suno move. Run it daily.
+
+## Releasing
+
+Publishing happens from CI only, via npm Trusted Publishing. There is no token
+in a secret, in a `~/.npmrc`, or in a shell history, and nothing to rotate.
+
+```
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+Two things that cost a cycle each when this was set up:
+
+- **Node 24 in the release workflow, not 22.** Trusted publishing needs npm
+  >= 11.5.1 and Node 22 still ships npm 10.9.8.
+- **No committed `.npmrc`.** An earlier version shipped one pointing at an
+  env-var token, and project config outranks both the user `~/.npmrc` that
+  `setup-node` writes and an interactive `npm login`. It produced an
+  authentication failure with nothing visibly misconfigured, twice.
+
+The first publish of a brand-new package name is the exception: a trusted
+publisher can only be configured on a package that exists, so v0.1.0 has to be
+claimed once by hand with an interactive `npm login` (which handles 2FA), from a
+directory with no project `.npmrc`. Every release after that goes through CI.
