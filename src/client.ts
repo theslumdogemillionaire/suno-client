@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import type { ZodType, ZodTypeDef } from 'zod';
 
 import {
@@ -43,6 +45,14 @@ export interface SunoClientOptions {
   timeoutMs?: number;
   retry?: Partial<RetryOptions>;
   userAgent?: string;
+  /** Matches the web app's own header. Defaults to `en`. */
+  acceptLanguage?: string;
+  /**
+   * Stable device id. Defaults to a random UUID generated once per client and
+   * persisted with the session. Set it explicitly to keep one identity across
+   * restarts when you are not using a file-backed store.
+   */
+  deviceId?: string;
   baselines?: DriftBaselines;
   /**
    * Called whenever a response's shape diverges from its recorded baseline.
@@ -94,6 +104,14 @@ export class SunoClient {
   private readonly onDrift: ((report: DriftReport) => void) | undefined;
   private readonly onRequest: ((info: RequestInfo) => void) | undefined;
 
+  private readonly acceptLanguage: string;
+  /**
+   * Used when the session carries no `ajs_anonymous_id`. Random per process and
+   * persisted with the session on first save, so it stays stable for an
+   * installation instead of announcing itself as a placeholder.
+   */
+  private readonly fallbackDeviceId: string;
+
   private auth: AuthState | undefined;
   private loaded = false;
   private readonly refreshOnce = singleFlight<void>();
@@ -104,6 +122,8 @@ export class SunoClient {
     this.timeoutMs = options.timeoutMs ?? 30_000;
     this.retry = { ...DEFAULT_RETRY, ...options.retry };
     this.userAgent = options.userAgent ?? DEFAULT_UA;
+    this.acceptLanguage = options.acceptLanguage ?? 'en';
+    this.fallbackDeviceId = options.deviceId ?? randomUUID();
     this.baselines = options.baselines;
     this.onDrift = options.onDrift;
     this.onRequest = options.onRequest;
@@ -112,7 +132,7 @@ export class SunoClient {
       const normalized = normalizeCookieInput(options.cookie);
       this.auth = {
         clerkClientCookie: normalized.clerkClientCookie,
-        deviceId: normalized.deviceId,
+        deviceId: normalized.deviceId ?? this.fallbackDeviceId,
       };
       this.loaded = true;
       this.store = options.store ?? new MemoryAuthStore(this.auth);
@@ -127,8 +147,15 @@ export class SunoClient {
    */
   async ensureAuth(signal?: AbortSignal): Promise<AuthState> {
     if (!this.loaded) {
-      this.auth = await this.store.load();
-      this.loaded = true;
+      const loaded = await this.store.load();
+      // Re-check after the await. A concurrent caller may have refreshed the
+      // JWT while this one was reading from disk, and assigning the stale state
+      // over the top makes it look expired again - defeating the single-flight
+      // and firing a second Clerk exchange for one stale token.
+      if (!this.loaded) {
+        this.auth = loaded;
+        this.loaded = true;
+      }
     }
     const auth = this.auth;
     if (!auth) {
@@ -195,14 +222,42 @@ export class SunoClient {
     return url.toString();
   }
 
+  /**
+   * Headers, matched against what suno.com actually sends.
+   *
+   * Captured from the live web app on 2026-08-17. Its own code sets only four:
+   * `accept-language`, `authorization`, `browser-token`, `device-id`, plus
+   * `content-type` on a POST. `origin`, `referer`, `user-agent` and the
+   * `sec-*` family are added by the browser itself, so a non-browser client has
+   * to supply them by hand or it stands out immediately.
+   *
+   * Two things deliberately differ from a naive port:
+   *
+   *   - No `accept: application/json`. The web app does not send it, so sending
+   *     it is a tell rather than good manners.
+   *   - `device-id` is a stable random UUID per installation, never a constant.
+   *     The all-zeros placeholder a fallback would give you is the single most
+   *     obvious fingerprint available: every deployment sharing one device id,
+   *     and that id being visibly synthetic.
+   *
+   * What this does NOT do, and cannot from Node: match Chrome's TLS handshake
+   * or HTTP/2 SETTINGS frames. JA3/JA4 fingerprinting sees straight through
+   * this. If you need that, the request has to leave from a real browser or
+   * from something like curl-impersonate. See docs/STATUS.md.
+   */
   private headers(auth: AuthState | undefined, hasBody: boolean): Record<string, string> {
     const headers: Record<string, string> = {
-      accept: 'application/json',
+      'accept-language': this.acceptLanguage,
       'user-agent': this.userAgent,
       'browser-token': browserToken(),
       origin: 'https://suno.com',
       referer: 'https://suno.com/',
-      'device-id': auth?.deviceId ?? '00000000-0000-0000-0000-000000000000',
+      'device-id': auth?.deviceId ?? this.fallbackDeviceId,
+      // Chrome sends these on every same-site XHR. Their absence is as much a
+      // signal as a wrong value would be.
+      'sec-fetch-site': 'same-site',
+      'sec-fetch-mode': 'cors',
+      'sec-fetch-dest': 'empty',
     };
     if (auth?.jwt) headers['authorization'] = `Bearer ${auth.jwt}`;
     if (hasBody) headers['content-type'] = 'application/json';
@@ -277,11 +332,15 @@ export class SunoClient {
         });
 
         this.checkDrift(options.endpointKey ?? options.path, raw);
-        this.emitRequest({ method: options.method, path: options.path, status, durationMs: Date.now() - started, attempt });
 
-        if (!options.schema) return raw as T;
+        if (!options.schema) {
+          this.emitRequest({ method: options.method, path: options.path, status, durationMs: Date.now() - started, attempt });
+          return raw as T;
+        }
         const parsed = options.schema.safeParse(raw);
         if (!parsed.success) {
+          // Deliberately before the emit: one HTTP exchange must produce exactly
+          // one onRequest callback, and the catch below will emit this failure.
           throw new SunoError({
             code: 'response_invalid',
             message: `response failed validation for ${options.path}: ${parsed.error.issues
@@ -294,12 +353,20 @@ export class SunoClient {
             alert: true,
           });
         }
+        this.emitRequest({ method: options.method, path: options.path, status, durationMs: Date.now() - started, attempt });
         return parsed.data;
       } catch (err) {
         const wrapped = toSunoError(err, options.path);
         this.emitRequest({ method: options.method, path: options.path, status, durationMs: Date.now() - started, attempt, error: wrapped });
         if (!wrapped.retryable || attempt >= retry.maxRetries) throw wrapped;
-        await sleep(backoffDelay(attempt, retry), options.signal);
+        try {
+          await sleep(backoffDelay(attempt, retry), options.signal);
+        } catch (abort) {
+          // An abort landing inside the backoff delay would otherwise escape as
+          // a raw DOMException, the one path in this method that does not yield
+          // a SunoError. Callers branching on err.code would read undefined.
+          throw toSunoError(abort, options.path);
+        }
       }
     }
   }

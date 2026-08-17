@@ -72,16 +72,20 @@ export interface ExtendOptions extends BaseGenerateOptions {
   tags?: string;
   title?: string;
   /**
-   * The source clip's full aligned prompt. Suno's own UI sends the original
-   * lyrics here alongside the continuation, and omitting it is the leading
-   * suspect for the 400 "Inconsistent task and generation params" that the
-   * Rust reference client still hits. See docs/STATUS.md.
+   * Rarely needed. The live web app sends `null` here even on a successful
+   * extend, so this was NOT the cause of the 400 that the Rust reference client
+   * still hits; the missing `task: "extend"` was.
    */
   continuedAlignedPrompt?: string;
 }
 
 export function buildExtendBody(clipId: string, options: ExtendOptions): GenerateWireBody {
   const body = baseWireBody(options.model ?? DEFAULT_MODEL, 'custom', options.sliders);
+  // The two fields that make an extend an extend. Captured from the web app;
+  // without `task` the server answers 400 "Inconsistent task and generation
+  // params" no matter how correct the rest of the body is.
+  body.task = 'extend';
+  body.metadata.is_remix = true;
   body.continue_clip_id = clipId;
   body.continue_at = options.at;
   body.continued_aligned_prompt = options.continuedAlignedPrompt ?? null;

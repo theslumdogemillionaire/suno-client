@@ -21,6 +21,13 @@ export interface DownloadOptions {
    * Costs one extra request per clip; skip it for bulk archival.
    */
   embedTags?: boolean;
+  /**
+   * Fetch the cover art and embed it as the APIC frame, so the file shows its
+   * artwork in any player. One extra request. On by default when tagging.
+   */
+  embedArtwork?: boolean;
+  /** Also save the cover art next to the audio as `<same-name>.jpeg`. */
+  saveArtwork?: boolean;
   signal?: AbortSignal;
   onProgress?: (info: { clipId: string; bytes: number }) => void;
 }
@@ -108,26 +115,58 @@ export async function downloadClip(
   }
 
   if (options.embedTags !== false && ext === 'mp3') {
-    await embedTags(client, clip, target, options.signal).catch(() => {
+    await embedTags(client, clip, target, options).catch(() => {
       // Tagging is a nicety. A failure here must not lose the audio we already
       // have on disk.
     });
   }
 
+  if (options.saveArtwork === true) {
+    await saveArtwork(clip, options.outputDir, options.signal).catch(() => undefined);
+  }
+
   return target;
+}
+
+/** Prefer the large art; the thumbnail is what `image_url` gives you. */
+export function artworkUrl(clip: Clip): string | undefined {
+  const large = (clip as { image_large_url?: unknown }).image_large_url;
+  if (typeof large === 'string' && large !== '') return large;
+  return typeof clip.image_url === 'string' && clip.image_url !== '' ? clip.image_url : undefined;
+}
+
+async function fetchArtwork(clip: Clip, signal?: AbortSignal): Promise<Buffer | undefined> {
+  const url = artworkUrl(clip);
+  if (url === undefined) return undefined;
+  const res = await fetch(url, signal ? { signal } : {});
+  if (!res.ok) return undefined;
+  return Buffer.from(await res.arrayBuffer());
+}
+
+async function saveArtwork(clip: Clip, outputDir: string, signal?: AbortSignal): Promise<void> {
+  const art = await fetchArtwork(clip, signal);
+  if (!art) return;
+  const { writeFile } = await import('node:fs/promises');
+  await writeFile(join(outputDir, clipFilename(clip.title, clip.id, 'jpeg')), art);
 }
 
 async function embedTags(
   client: SunoClient,
   clip: Clip,
   path: string,
-  signal?: AbortSignal,
+  options: DownloadOptions,
 ): Promise<void> {
+  const signal = options.signal;
   const tags: NodeID3.Tags = {
     title: clip.title || 'Untitled',
     artist: 'Suno',
     comment: { language: 'eng', text: clip.metadata?.tags ?? '' },
   };
+
+  if (options.embedArtwork !== false) {
+    const art = await fetchArtwork(clip, signal).catch(() => undefined);
+    if (art) tags.image = { mime: 'image/jpeg', type: { id: 3, name: 'front cover' }, description: 'cover', imageBuffer: art };
+  }
   const lyrics = clip.metadata?.prompt;
   if (typeof lyrics === 'string' && lyrics !== '') {
     tags.unsynchronisedLyrics = { language: 'eng', text: lyrics };

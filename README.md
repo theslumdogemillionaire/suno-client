@@ -176,8 +176,23 @@ for (const { clip, reason } of job.failed) {
 
 Jobs survive a restart: `suno.job(ids)` rehydrates one from clip ids you stored.
 
-For a karaoke overlay, `suno.alignedLyrics(clipId)` gives word-level timings and
-`suno.lrc(clipId)` gives an LRC file.
+### One call for everything an overlay needs
+
+```ts
+const t = await suno.track(clipId);
+// title, style, lyrics, artworkUrl, durationS,
+// words (word-level timings), lrc,
+// barLines (seconds), bpm, key
+```
+
+`barLines` comes from Suno's own beat grid, not from a fixed BPM interval, so
+visuals stay locked when the tempo drifts. `suno.waveform(clipId)` returns a
+pre-computed waveform at 11 resolutions, which beats downloading and decoding
+the MP3 to draw a scrubber.
+
+These endpoints (`downbeats`, `key`, `waveform-aggregates`, `stems/pages`) do not
+appear in any other unofficial client. They came out of watching suno.com's own
+network traffic.
 
 Three things that matter when prompts come from strangers:
 
@@ -185,6 +200,24 @@ Three things that matter when prompts come from strangers:
 - Call `suno.captchaCheck()` on a schedule. A gated account cannot generate, and
   clearing it needs a human at suno.com.
 - Generation costs 10 credits per call and returns 2 clips. Budget accordingly.
+
+## Looking like a browser
+
+Measured, not assumed. The web app's own code sets four headers on a studio-api
+call: `accept-language`, `authorization`, `browser-token`, `device-id`, plus
+`content-type` on a POST. The rest are browser-added, so this client supplies
+them by hand and matches the set exactly.
+
+Two consequences worth knowing:
+
+- It does **not** send `accept: application/json`. The web app does not, so
+  sending it is a tell.
+- `device-id` is a stable random UUID per installation, never a constant. An
+  all-zeros placeholder is the most identifiable value you could possibly ship.
+
+It does **not** match Chrome's TLS handshake or HTTP/2 SETTINGS. JA3/JA4
+fingerprinting sees straight through it. The header layer is browser-shaped; the
+transport layer is Node and looks like Node.
 
 ## Layout
 

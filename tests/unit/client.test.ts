@@ -509,7 +509,11 @@ describe('request shape', () => {
     expect(headers['device-id']).toBe('device-abcdef');
     expect(headers['origin']).toBe('https://suno.com');
     expect(headers['referer']).toBe('https://suno.com/');
-    expect(headers['accept']).toBe('application/json');
+    // Deliberately absent: the real web app does not send it, so sending it is
+    // a fingerprint rather than good manners.
+    expect(headers['accept']).toBeUndefined();
+    expect(headers['accept-language']).toBe('en');
+    expect(headers['sec-fetch-site']).toBe('same-site');
 
     const envelope = JSON.parse(headers['browser-token'] ?? '{}') as { token?: string };
     const decoded = JSON.parse(Buffer.from(envelope.token ?? '', 'base64').toString('utf8')) as {
@@ -518,12 +522,20 @@ describe('request shape', () => {
     expect(typeof decoded.timestamp).toBe('number');
   });
 
-  it('falls back to a placeholder device id when the session never captured one', async () => {
-    const s = stub(route(() => jsonResponse({ ok: true }), clerkResponder('unused')));
+  it('falls back to a stable random device id when the session never captured one', async () => {
+    // An all-zeros placeholder would be the most identifiable value available:
+    // every deployment sharing one visibly synthetic id.
+    const s1 = stub(route(() => jsonResponse({ ok: true }), clerkResponder('unused')));
+    const client = makeClient(s1.fetch, session({ deviceId: undefined }));
+    await client.request({ method: 'GET', path: '/api/x' });
+    await client.request({ method: 'GET', path: '/api/y' });
 
-    await makeClient(s.fetch, session({ deviceId: undefined })).request({ method: 'GET', path: '/api/x' });
-
-    expect(s.studio()[0]?.headers['device-id']).toBe('00000000-0000-0000-0000-000000000000');
+    const ids = s1.studio().map((c) => c.headers['device-id']);
+    expect(ids[0]).toMatch(/^[0-9a-f-]{36}$/);
+    expect(ids[0]).not.toBe('00000000-0000-0000-0000-000000000000');
+    // Stable within one client: a device id that changes per request is as much
+    // of a tell as a constant one.
+    expect(new Set(ids).size).toBe(1);
   });
 
   it('sets content-type only when it actually sends a body', async () => {

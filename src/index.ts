@@ -38,7 +38,19 @@ export {
   type SetMetadataOptions,
 } from './api/misc.js';
 
-export { downloadClip, downloadClips, clipFilename, type DownloadOptions } from './download.js';
+export { artworkUrl, downloadClip, downloadClips, clipFilename, type DownloadOptions } from './download.js';
+
+export {
+  barLines,
+  getDownbeats,
+  getMusicalKey,
+  getStemPages,
+  getWaveform,
+  tempoFromDownbeats,
+  type Downbeats,
+  type MusicalKey,
+  type Waveform,
+} from './api/media.js';
 
 export {
   browserToken,

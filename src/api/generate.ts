@@ -27,6 +27,10 @@ export interface GenerateMetadataWire {
   user_tier: string;
   create_session_token: string;
   disable_volume_normalization: boolean;
+  /** Sent by the web app on every create. Decorative as far as we can tell. */
+  lyrics_updated?: boolean;
+  /** True on extend and other derived creates. Captured from the live web app. */
+  is_remix?: boolean;
   control_sliders?: {
     weirdness_constraint?: number;
     style_weight?: number;
@@ -50,6 +54,15 @@ export interface GenerateMetadataWire {
  */
 export interface GenerateWireBody {
   token: string | null;
+  /**
+   * Absent on a plain create, `"extend"` on a continuation.
+   *
+   * Captured from the real web app on 2026-08-17 by watching the browser submit
+   * an extend. Its absence is what produced HTTP 400 "Inconsistent task and
+   * generation params": the body named `continue_clip_id` while the task said
+   * plain generation, and the server would not reconcile the two.
+   */
+  task?: string;
   generation_type: string;
   title: string;
   tags: string | null;
@@ -138,6 +151,7 @@ export function buildMetadata(
     // Looks decorative. Is not optional.
     create_session_token: sessionToken,
     disable_volume_normalization: false,
+    lyrics_updated: false,
     ...(control ? { control_sliders: control } : {}),
   };
 }
