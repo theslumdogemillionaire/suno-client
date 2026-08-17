@@ -1,6 +1,8 @@
 # suno-client
 
 [![ci](https://github.com/theslumdogemillionaire/suno-client/actions/workflows/ci.yml/badge.svg)](https://github.com/theslumdogemillionaire/suno-client/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/suno-client?logo=npm&color=cb3837)](https://www.npmjs.com/package/suno-client)
+[![module formats](https://img.shields.io/badge/ESM%20%2B%20CJS-dual-informational)](package.json)
 [![tests](https://img.shields.io/badge/tests-262%20passing-brightgreen)](tests/unit)
 [![typescript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](tsconfig.json)
 [![node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=nodedotjs&logoColor=white)](package.json)
@@ -126,8 +128,15 @@ requests that can never succeed.
 npm install suno-client
 ```
 
-ESM only, Node 22+. There is no CommonJS build: `require()` will not work, use
-`await import('suno-client')` from CJS.
+Node 22+. Ships both ESM and CommonJS, so `import` and `require` both work, with
+types resolving correctly from either. Verified with `publint` and
+`are-the-types-wrong`, and by installing the tarball into a CJS project and an
+ESM project in CI.
+
+```js
+import { Suno } from 'suno-client';        // ESM
+const { Suno } = require('suno-client');   // CJS
+```
 
 To work on the client itself instead:
 

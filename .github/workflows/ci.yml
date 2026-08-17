@@ -8,6 +8,27 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22 is the floor declared in engines, 24 is current. Testing only one
+        # would let the other rot silently.
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
+
+  # Validates the published shape rather than the source: exports map, types
+  # resolution from both CJS and ESM, and the file list npm would actually ship.
+  package:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,6 +36,32 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx tsc --noEmit
-      - run: npx vitest run tests/unit
-      - run: npx tsc -p tsconfig.build.json
+      - run: npm run build
+      - run: npm run check:package
+
+      # The check that catches the failure this package already shipped once:
+      # a consumer installing the tarball and finding the drift baselines gone.
+      - name: Install the tarball and use it from both module systems
+        run: |
+          npm pack --pack-destination /tmp
+          mkdir -p /tmp/cjs /tmp/esm
+
+          cd /tmp/cjs && npm init -y >/dev/null
+          npm install /tmp/suno-client-*.tgz >/dev/null
+          node -e "
+            const { registryFromBaselines, buildExtendBody } = require('suno-client');
+            const b = registryFromBaselines().get('feed.v3');
+            if (!b || !b.samples) throw new Error('CJS: drift baselines missing');
+            if (buildExtendBody('x', { at: 1 }).task !== 'extend') throw new Error('CJS: extend task field lost');
+            console.log('CJS ok:', b.samples, 'baseline samples');
+          "
+
+          cd /tmp/esm && npm init -y >/dev/null
+          node -e "const p=require('/tmp/esm/package.json');p.type='module';require('fs').writeFileSync('/tmp/esm/package.json',JSON.stringify(p))"
+          npm install /tmp/suno-client-*.tgz >/dev/null
+          node --input-type=module -e "
+            import { registryFromBaselines } from 'suno-client';
+            const b = registryFromBaselines().get('feed.v3');
+            if (!b || !b.samples) throw new Error('ESM: drift baselines missing');
+            console.log('ESM ok:', b.samples, 'baseline samples');
+          "

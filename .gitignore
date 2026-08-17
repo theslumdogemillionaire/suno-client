@@ -7,6 +7,10 @@ dist/
 .env.*
 !.env.example
 
+# .npmrc itself is committed and holds only an env-var reference. Any local
+# variant is assumed to contain a real token.
+.npmrc.*
+
 tmp-songs/
 songs/
 coverage/

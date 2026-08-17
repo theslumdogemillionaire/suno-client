@@ -1,8 +1,5 @@
-import { readFileSync, readdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import type { DriftBaselines } from '../client.js';
+import { BUNDLED_BASELINES } from './baselines.generated.js';
 import type { Baseline } from './shape.js';
 
 /**
@@ -41,49 +38,25 @@ export const CONSUMED_PATHS: Record<string, readonly string[]> = {
   'persona.get': ['persona.id', 'persona.name'],
 };
 
-const here = dirname(fileURLToPath(import.meta.url));
-
-function baselineDir(): string {
-  return join(here, 'baselines');
-}
-
-export function loadBaselines(dir: string = baselineDir()): Map<string, Baseline> {
+/**
+ * The baselines shipped with this release, as data compiled into the module.
+ *
+ * Deliberately not read from disk. Locating them by module path needed
+ * `import.meta.url`, which is ESM-only and rules out a CommonJS build, and it
+ * had already shipped once with drift detection silently inert because tsc does
+ * not copy .json files into the build output. Data in the module graph cannot go
+ * missing.
+ */
+export function loadBaselines(): Map<string, Baseline> {
   const map = new Map<string, Baseline>();
-  let entries: string[];
-  try {
-    entries = readdirSync(dir);
-  } catch {
-    // A missing directory means the build did not ship the baselines, which
-    // leaves drift detection inert. Silent-when-broken is the exact failure this
-    // project exists to prevent, so it gets a warning rather than a shrug. A
-    // fresh clone with no baselines yet still starts fine; it just cannot warn.
-    process.emitWarning(
-      `suno-client: no drift baselines at ${dir}. Response-drift detection is OFF. ` +
-        'If this is a built package, the build did not copy src/drift/baselines. ' +
-        'If this is a fresh checkout, run: npx tsx scripts/record-baselines.ts',
-      'SunoClientWarning',
-    );
-    return map;
-  }
-  for (const name of entries) {
-    if (!name.endsWith('.json')) continue;
-    try {
-      const parsed = JSON.parse(readFileSync(join(dir, name), 'utf8')) as Baseline;
-      if (typeof parsed.endpoint === 'string') map.set(parsed.endpoint, parsed);
-    } catch {
-      // A corrupt baseline is not worth crashing over; it just stops guarding
-      // that one endpoint.
-    }
+  for (const baseline of BUNDLED_BASELINES) {
+    if (typeof baseline.endpoint === 'string') map.set(baseline.endpoint, baseline);
   }
   return map;
 }
 
-export function registryFromBaselines(dir?: string): DriftBaselines {
-  const map = loadBaselines(dir);
-  return {
-    get: (key) => map.get(key),
-    consumedPaths: (key) => CONSUMED_PATHS[key],
-  };
+export function registryFromBaselines(): DriftBaselines {
+  return registryFromMap(loadBaselines());
 }
 
 export function registryFromMap(map: Map<string, Baseline>): DriftBaselines {
@@ -91,4 +64,27 @@ export function registryFromMap(map: Map<string, Baseline>): DriftBaselines {
     get: (key) => map.get(key),
     consumedPaths: (key) => CONSUMED_PATHS[key],
   };
+}
+
+/**
+ * Load baselines from a directory instead of the bundled set.
+ *
+ * For anyone recording their own against a different account, or pinning an
+ * older set. Node-only and dynamically imported so the bundled path stays free
+ * of any filesystem dependency.
+ */
+export async function registryFromDirectory(dir: string): Promise<DriftBaselines> {
+  const { readdirSync, readFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const map = new Map<string, Baseline>();
+  for (const name of readdirSync(dir)) {
+    if (!name.endsWith('.json')) continue;
+    try {
+      const parsed = JSON.parse(readFileSync(join(dir, name), 'utf8')) as Baseline;
+      if (typeof parsed.endpoint === 'string') map.set(parsed.endpoint, parsed);
+    } catch {
+      // A corrupt file stops guarding that one endpoint, nothing more.
+    }
+  }
+  return registryFromMap(map);
 }
