@@ -60,4 +60,16 @@ jobs:
             exit 1
           fi
 
+      # Both auth paths, on purpose, so this file does not need editing between
+      # the first release and every one after it.
+      #
+      # npm tries OIDC first and falls back to a token. Trusted publishing cannot
+      # claim a package name that does not exist yet (npm/cli#8544, still open),
+      # so the very first publish needs a granular token with "All packages"
+      # write and "Bypass 2FA" enabled, held in the NPM_TOKEN secret and revoked
+      # straight afterwards. Once the package exists and its trusted publisher is
+      # configured, OIDC wins and the secret can be deleted: an absent secret
+      # resolves to empty, which is simply ignored when OIDC succeeds.
       - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
