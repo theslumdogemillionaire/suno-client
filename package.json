@@ -78,7 +78,6 @@
   },
   "module": "./dist/esm/index.js",
   "publishConfig": {
-    "access": "public",
-    "provenance": false
+    "access": "public"
   }
 }

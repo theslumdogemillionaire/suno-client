@@ -46,4 +46,10 @@ jobs:
 
       - run: npm publish --provenance --access public
         env:
+          # Both, deliberately. setup-node writes the token into the USER npmrc
+          # as NODE_AUTH_TOKEN, but this repo's own .npmrc sets the same key from
+          # SUNO_CLIENT_NPM_TOKEN, and project config outranks user config. With
+          # only NODE_AUTH_TOKEN set, npm would send the literal unexpanded
+          # string and the publish would 401 with nothing obviously wrong.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          SUNO_CLIENT_NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
