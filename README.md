@@ -247,4 +247,5 @@ docs/
 
 ## License
 
-MIT.
+[WTFPL](LICENSE). Putting terms and conditions on a reverse-engineered client
+would be its own kind of joke, so: do what the fuck you want to.

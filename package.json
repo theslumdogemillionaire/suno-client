@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Typed Suno client for Node with response-drift detection and a live canary",
   "type": "module",
-  "license": "MIT",
+  "license": "WTFPL",
   "engines": {
     "node": ">=22"
   },
