@@ -35,10 +35,11 @@ export async function billingInfo(client: SunoClient, signal?: AbortSignal): Pro
 /**
  * Ask whether this account is captcha-gated before spending anything.
  *
- * `required: false` for accounts above Suno's trust threshold, which is most
- * paid accounts, and it lets a headless client skip browser automation
- * entirely. When it flips to true, generating one song by hand in the suno.com
- * UI clears the challenge for a while.
+ * `required: false` for accounts above Suno's trust threshold, which lets a
+ * headless client skip browser automation entirely. Tier is not the
+ * discriminator: a Free account answered `{required: false, captcha_version: 2}`
+ * on 2026-08-18, and the flag has been watched flickering on a paid one. See
+ * docs/STATUS.md before wiring any behaviour to it.
  */
 export async function captchaCheck(
   client: SunoClient,

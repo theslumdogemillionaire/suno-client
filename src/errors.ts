@@ -18,6 +18,7 @@ export type SunoErrorCode =
   | 'auth_missing'
   | 'auth_expired'
   | 'auth_dead'
+  | 'plan_required'
   | 'captcha_required'
   | 'insufficient_credits'
   | 'rate_limited'
@@ -156,6 +157,34 @@ export function looksLikeSchemaDrift(body: string): boolean {
   // would slip past a literal match and a schema change would go unnoticed.
   return /['"]loc['"]\s*:\s*\[\s*['"]body['"]/.test(body) ||
     /['"]type['"]\s*:\s*['"](missing|[a-z_]+_type)['"]/.test(body);
+}
+
+/**
+ * A 403 from studio-api is authorization, not authentication.
+ *
+ * A dead session produces 401, which `request()` already answers by refreshing
+ * the JWT and replaying. So a 403 arriving after `ensureAuth()` has just minted
+ * a token means the account is not allowed to do this - a Pro-only feature, or
+ * a model above its tier. Measured on a Free account 2026-08-18: stems answers
+ * 403 with an empty body, and a create on the default (v5.5) model answers 403
+ * `{"error_type":"permission_denied","detail":"You don't have access to this
+ * model. Upgrade your plan to use it."}`.
+ *
+ * The body only ever enriches the message. Suno sends the same 403 with and
+ * without an explanation, so deciding the code on the text would classify the
+ * identical situation two different ways depending on which endpoint answered.
+ */
+export function planGateDetail(body: string): string | undefined {
+  const trimmed = body.trim();
+  if (trimmed === '') return undefined;
+  try {
+    const parsed = JSON.parse(trimmed) as { detail?: unknown; detail_fallback?: unknown };
+    const detail = parsed.detail ?? parsed.detail_fallback;
+    if (typeof detail === 'string' && detail !== '') return detail;
+  } catch {
+    // Not JSON. Fall through to the raw text, which is still better than nothing.
+  }
+  return truncate(trimmed, 200);
 }
 
 export function looksLikeInsufficientCredits(body: string): boolean {

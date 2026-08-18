@@ -15,6 +15,7 @@ const USAGE = `suno-client <command>
 
   login [--stdin]      store a session from SUNO_COOKIE, a file, or stdin
   logout               forget the stored session
+  account              tier, plan, credits, unlocked features, usable models
   credits              plan and remaining credits
   models               models this account can use
   list [n]             most recent clips
@@ -71,7 +72,7 @@ async function main(): Promise<void> {
       if (value === '') throw new SunoError({ code: 'invalid_input', message: 'no cookie: set SUNO_COOKIE or pass --stdin' });
       await suno.login(value);
       const c = await suno.credits();
-      out(`signed in: ${c.plan}, ${c.left} credits`);
+      out(`signed in: ${c.plan} (${c.tier}), ${c.left} credits`);
       return;
     }
 
@@ -79,6 +80,21 @@ async function main(): Promise<void> {
       await suno.logout();
       out('session cleared');
       return;
+
+    case 'account': {
+      const a = await suno.account();
+      out({
+        tier: a.tier,
+        plan: a.planName,
+        planKey: a.planKey,
+        creditsLeft: a.creditsLeft,
+        monthlyLimit: a.monthlyLimit,
+        defaultModel: a.defaultModel,
+        features: a.features,
+        usableModels: a.usableModels.map((m) => m.external_key),
+      });
+      return;
+    }
 
     case 'credits':
       out(await suno.credits());

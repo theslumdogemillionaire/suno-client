@@ -19,6 +19,7 @@ import {
   looksLikeAuthExpired,
   looksLikeInsufficientCredits,
   looksLikeSchemaDrift,
+  planGateDetail,
   SunoError,
   truncate,
 } from './errors.js';
@@ -311,7 +312,7 @@ export class SunoClient {
             throw new SunoError({
               code: 'captcha_required',
               message:
-                'Suno rejected the request token even with a fresh JWT. The account is captcha-gated: generate one song at suno.com to clear it, or pass a solved hCaptcha token as captchaToken.',
+                'Suno rejected the request token even with a fresh JWT: the account is captcha-gated and no create will succeed until the gate lifts. Measured 2026-08-18 - `/api/c/check` flipped to `required: true` and the identical body that had generated fine minutes earlier started answering 422 token_validation_failed. Nothing was charged. Pass a solved hCaptcha token as captchaToken, or wait: the flag has been seen clearing itself within the hour.',
               status: res.status,
               path: options.path,
               body: text,
@@ -435,7 +436,21 @@ export function classifyHttpError(status: number, body: string, path: string): S
     });
   }
   if (status === 403) {
-    return new SunoError({ ...base, code: 'auth_dead', message: 'HTTP 403: forbidden', alert: true });
+    // Not a dead session: that is a 401, which the retry loop above refreshes
+    // and replays. A 403 with a freshly minted JWT is the account being told no
+    // - a subscription-only feature, or a model above its tier. Reporting it as
+    // auth_dead sent Free accounts off to re-export a cookie that was fine, and
+    // paged a human for a plan limit that waiting will never fix.
+    const detail = planGateDetail(body);
+    return new SunoError({
+      ...base,
+      code: 'plan_required',
+      message:
+        detail === undefined
+          ? `HTTP 403 on ${path}: this account's plan does not allow that`
+          : `HTTP 403 on ${path}: ${detail}`,
+      retryable: false,
+    });
   }
   if (status === 429) {
     return new SunoError({ ...base, code: 'rate_limited', message: 'HTTP 429: rate limited', retryable: true });

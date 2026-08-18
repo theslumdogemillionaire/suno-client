@@ -3,7 +3,7 @@
 [![ci](https://github.com/theslumdogemillionaire/suno-client/actions/workflows/ci.yml/badge.svg)](https://github.com/theslumdogemillionaire/suno-client/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/suno-client?logo=npm&color=cb3837)](https://www.npmjs.com/package/suno-client)
 [![module formats](https://img.shields.io/badge/ESM%20%2B%20CJS-dual-informational)](package.json)
-[![tests](https://img.shields.io/badge/tests-262%20passing-brightgreen)](tests/unit)
+[![tests](https://img.shields.io/badge/tests-281%20passing-brightgreen)](tests/unit)
 [![typescript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](tsconfig.json)
 [![node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![schema canary](https://img.shields.io/badge/schema%20canary-0%20credits-blueviolet)](src/drift/probe.ts)
@@ -117,10 +117,37 @@ requests that can never succeed.
 | `insufficient_credits` | no | no | out of credits |
 | `not_found` | no | no | bad id |
 | `auth_expired` | no | no | handled internally: refresh and replay once |
+| `plan_required` | no | no | this account's plan does not allow that (403) |
 | `captcha_required` | no | yes | generate one song by hand at suno.com |
 | `auth_dead` | no | yes | the cookie is finished, log in again |
 | `schema_drift` | no | yes | Suno changed the request schema |
 | `route_gone` | no | yes | an endpoint moved |
+
+### 4. It works on any account tier
+
+Verified live on both a subscription and a Free account. That distinction is not
+cosmetic: a Free account's billing payload has **no `plan` object at all**, and
+the model the web app defaults to (v5.5) reports `can_use: false` there, so a
+client that assumes the paid shape fails on billing and then 403s on every
+create. This one asks instead.
+
+```ts
+const account = await suno.account();
+// { tier: 'free', planName: 'Free Plan', creditsLeft: 60,
+//   defaultModel: 'chirp-auk-turbo', features: ['tag_upsample'], ... }
+
+if (await suno.can('get_stems')) await suno.stems(clipId);
+```
+
+`can()` reads Suno's `accessible_features`, which under-reports: a `true` is
+reliable, a `false` only means "not listed". Cover is the worked example - not
+listed on Free, and it submits fine. Let `plan_required` be the real answer.
+
+Creates with no explicit `model` resolve to one the account may actually use,
+from a single billing lookup cached per client. Pass `model` to skip it, or
+`new Suno({ resolveModel: false })` to pin the old hardcoded default. A
+subscription-only feature answers `plan_required` rather than pretending your
+session died.
 
 ## Install
 

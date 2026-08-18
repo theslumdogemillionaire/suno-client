@@ -102,6 +102,14 @@ export const ModelSchema = z
     external_key: z.string(),
     can_use: z.boolean().optional(),
     is_default_model: z.boolean().optional(),
+    /**
+     * Set on the one model a Free account is allowed to use. Paid payloads
+     * carry it too, on a model the account may not be able to use at all, so it
+     * is a hint about the tier below you rather than about you.
+     */
+    is_default_free_model: z.boolean().optional(),
+    /** `["pro"]` on models behind a subscription. */
+    badges: z.array(z.string()).optional(),
     description: z.string().optional(),
     max_lengths: MaxLengthsSchema.optional(),
   })
@@ -109,18 +117,45 @@ export const ModelSchema = z
 
 export type Model = z.infer<typeof ModelSchema>;
 
+export const PlanFeatureSchema = z.object({ name: z.string() }).passthrough();
+
+export const PlanSchema = z
+  .object({
+    name: z.string(),
+    plan_key: z.string().optional(),
+    level: z.number().optional(),
+    usage_plan_features: z.array(PlanFeatureSchema).optional(),
+  })
+  .passthrough();
+
+/**
+ * Billing, across account tiers.
+ *
+ * Only `total_credits_left` is required, and that is not tidiness: a Free
+ * account's payload has **no `plan` object at all**. Requiring it - which this
+ * schema did until 2026-08-18 - made `billing()`, `credits()` and `models()`
+ * all throw `response_invalid` on every Free account, which in turn took out
+ * anything built on top of them. Verified live against a Free account.
+ *
+ * What a Free payload has instead: `plans` (the catalogue you could buy, not
+ * the one you hold), `subscription_type: false`, `is_active: false`, and
+ * `accessible_features` listing the handful of features that are actually
+ * unlocked. See `describeAccount()` in api/account.ts for the tier derivation.
+ */
 export const BillingInfoSchema = z
   .object({
-    // Only these two are load-bearing. Everything else defaults, so one renamed
-    // billing field cannot take down auth, credits and model listing at once.
+    // The one field every tier returns. Everything else defaults, so one
+    // renamed billing field cannot take down auth, credits and model listing at
+    // once.
     total_credits_left: z.number(),
-    plan: z
-      .object({
-        name: z.string(),
-        plan_key: z.string().optional(),
-        usage_plan_features: z.array(z.object({ name: z.string() }).passthrough()).optional(),
-      })
-      .passthrough(),
+    /** Absent on Free. Present on a subscription, and the tier signal. */
+    plan: PlanSchema.optional(),
+    /** The purchasable catalogue. Free accounts get it; it is not your plan. */
+    plans: z.array(PlanSchema).optional(),
+    /** False on Free, true on a live subscription. */
+    subscription_type: z.boolean().optional(),
+    /** Features unlocked for this account right now, whatever the tier. */
+    accessible_features: z.array(PlanFeatureSchema).optional(),
     credits: z.number().optional(),
     monthly_usage: z.number().optional(),
     monthly_limit: z.number().optional(),
@@ -128,6 +163,19 @@ export const BillingInfoSchema = z
     models: z.array(ModelSchema).optional(),
     period: z.string().optional(),
     renews_on: z.string().nullish(),
+    /** Free-tier allowances, counted down per feature. Zero is common. */
+    free_cover_clips_remaining: z.number().optional(),
+    free_persona_clips_remaining: z.number().optional(),
+    free_remasters_remaining: z.number().optional(),
+    /** Free accounts replenish credits on a short timer rather than monthly. */
+    credit_rate_limit: z
+      .object({
+        available_credits: z.number().optional(),
+        replenish_credits: z.number().optional(),
+        replenish_interval_secs: z.number().optional(),
+      })
+      .passthrough()
+      .optional(),
     remaster_model_types: z
       .array(
         z
@@ -144,6 +192,7 @@ export const BillingInfoSchema = z
   .passthrough();
 
 export type BillingInfo = z.infer<typeof BillingInfoSchema>;
+export type Plan = z.infer<typeof PlanSchema>;
 
 export const LyricsSubmitSchema = z.object({ id: z.string() }).passthrough();
 

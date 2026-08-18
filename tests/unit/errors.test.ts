@@ -47,11 +47,32 @@ describe('classifyHttpError', () => {
     }
   });
 
-  it('reads a 403 as a dead session that needs a human', () => {
+  it('reads a 403 as the plan saying no, not as a dead session', () => {
+    // A dead session is a 401, which the request loop refreshes and replays. A
+    // 403 arrives with a JWT that was just minted, so it is authorization: a
+    // subscription-only feature, or a model above this account's tier. Calling
+    // it auth_dead sent Free accounts off to re-export a cookie that was fine,
+    // and paged a human over a plan limit that waiting cannot fix.
     const err = classifyHttpError(403, '{"detail":"Forbidden"}', GENERATE);
-    expect(err.code).toBe('auth_dead');
-    expect(err.alert).toBe(true);
+    expect(err.code).toBe('plan_required');
+    expect(err.alert).toBe(false);
     expect(err.retryable).toBe(false);
+  });
+
+  it('quotes Suno\'s own explanation of the gate when it sends one', () => {
+    // Captured live from a Free account creating on the default (v5.5) model.
+    const body =
+      '{"status_code": 403, "detail": "You don\'t have access to this model. Upgrade your plan to use it.", "error_type": "permission_denied", "retryable": false}';
+    const err = classifyHttpError(403, body, GENERATE);
+    expect(err.code).toBe('plan_required');
+    expect(err.message).toContain('Upgrade your plan');
+  });
+
+  it('still says something useful when the 403 body is empty', () => {
+    // Stems answers exactly this on a Free account: 403, no body at all.
+    const err = classifyHttpError(403, '', '/api/edit/stems/abc');
+    expect(err.code).toBe('plan_required');
+    expect(err.message).toContain("plan does not allow");
   });
 
   it('makes a 429 retryable and keeps it silent', () => {

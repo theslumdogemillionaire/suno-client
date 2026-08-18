@@ -1,6 +1,6 @@
 export { Suno, type SunoOptions } from './suno.js';
 export { SunoClient, type SunoClientOptions, type RequestInfo, type DriftBaselines } from './client.js';
-export { SunoError, type SunoErrorCode } from './errors.js';
+export { SunoError, planGateDetail, type SunoErrorCode } from './errors.js';
 export { GenerationJob, allTerminal, pendingIds, type JobUpdate, type PollOptions } from './poll.js';
 
 export {
@@ -26,6 +26,15 @@ export {
   type ExtendOptions,
   type RemasterOptions,
 } from './api/derive.js';
+
+export {
+  describeAccount,
+  getAccount,
+  pickDefaultModel,
+  pickRemasterModel,
+  type AccountInfo,
+  type AccountTier,
+} from './api/account.js';
 
 export { iterateClips, listClips, getClips, searchClips, type ListOptions } from './api/feed.js';
 export {
@@ -98,4 +107,5 @@ export {
   type LyricsResult,
   type Model,
   type PersonaInfo,
+  type Plan,
 } from './schemas.js';

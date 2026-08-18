@@ -30,18 +30,12 @@ function bad(label: string, err: unknown): void {
 async function main(): Promise<void> {
   console.log('== account ==');
   try {
-    const c = await suno.credits();
-    ok('credits', `${c.left} left on ${c.plan}`);
+    const a = await suno.account();
+    ok('account', `${a.planName} (${a.tier}), ${a.creditsLeft} credits, default model ${a.defaultModel ?? 'unresolved'}`);
+    ok('features', a.features.join(' ') || '(none unlocked)');
+    ok('models', a.usableModels.map((m) => `${m.name}=${m.external_key}`).join(' ') || '(none usable)');
   } catch (e) {
-    bad('credits', e);
-  }
-
-  try {
-    const models = await suno.models();
-    const usable = models.filter((m) => m.can_use).map((m) => `${m.name}=${m.external_key}`);
-    ok('models', usable.join(' '));
-  } catch (e) {
-    bad('models', e);
+    bad('account', e);
   }
 
   try {
@@ -112,6 +106,8 @@ async function main(): Promise<void> {
 
   console.log('== paid generation ==');
   try {
+    // No `model` on purpose: the client must pick one this account is allowed
+    // to use, whatever the tier.
     const job = await suno.generate({
       title: 'Smoke Test',
       tags: 'minimal ambient, 80 BPM, no vocals',

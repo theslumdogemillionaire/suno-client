@@ -15,6 +15,7 @@
  */
 import { billingInfo, captchaCheck, generateLyrics } from '../src/api/misc.js';
 import { getClips, listClips } from '../src/api/feed.js';
+import { describeAccount } from '../src/api/account.js';
 import { SunoClient } from '../src/client.js';
 import { formatDriftReport, type DriftReport } from '../src/drift/detect.js';
 import { ALL_PROBE_VARIANTS, probeGenerateSchema, variantForDay } from '../src/drift/probe.js';
@@ -76,8 +77,10 @@ async function main(): Promise<void> {
   let clipId: string | undefined;
 
   await probe('auth + billing', async () => {
-    const info = await billingInfo(client);
-    return `${info.plan.name}, ${info.total_credits_left} credits, ${info.models?.length ?? 0} models`;
+    // describeAccount rather than info.plan.name: a Free account's payload has
+    // no plan object, and the canary must run on any tier.
+    const account = describeAccount(await billingInfo(client));
+    return `${account.planName} (${account.tier}), ${account.creditsLeft} credits, ${account.models.length} models, default ${account.defaultModel ?? 'unresolved'}`;
   });
 
   await probe('captcha gate', async () => {

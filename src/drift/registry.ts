@@ -30,7 +30,16 @@ export const CONSUMED_PATHS: Record<string, readonly string[]> = {
     '[].created_at',
     '[].metadata.duration',
   ],
-  'billing.info': ['total_credits_left', 'plan.name', 'models[].external_key', 'models[].name'],
+  // `plan.name` is deliberately NOT here. It is absent on a Free account, so
+  // listing it would flag every Free-tier billing response as an error-severity
+  // break of a path we read - the exact background noise that gets a drift
+  // detector muted. The tier is derived in api/account.ts instead.
+  'billing.info': [
+    'total_credits_left',
+    'models[].external_key',
+    'models[].name',
+    'models[].can_use',
+  ],
   'captcha.check': ['required'],
   'lyrics.submit': ['id'],
   'lyrics.result': ['text', 'title', 'status'],

@@ -1,11 +1,59 @@
 # What works, what does not, and what it cost to find out
 
-Last verified live against a paid account on **2026-08-17**.
+Last verified live on a paid account **2026-08-17**, and on a Free account
+**2026-08-18**.
 
 Suno has no official API. Everything here talks to the private web API with a
 browser session, which is outside Suno's terms of service. A ban lands on a paid
 account that presumably holds the commercial rights to your tracks. Decide that
 is acceptable before building on this.
+
+## Account tiers
+
+Everything below was measured on a Free account on 2026-08-18, against the same
+client that had only ever been run on a subscription. Three assumptions broke.
+
+| Assumption | Free reality |
+| --- | --- |
+| Billing carries a `plan` object | **Absent.** `plans` is the purchasable catalogue, not your plan. `subscription_type: false`, `is_active: false`. |
+| `DEFAULT_MODEL` (v5.5, `chirp-fenix`) is usable | `can_use: false`. Only `chirp-auk-turbo` (v4.5-all) is usable, flagged `is_default_model` **and** `is_default_free_model`. |
+| A 403 means the session is dead | It means the plan says no. A dead session is a 401. |
+
+What that cost before the fix: requiring `plan` made `billing()`, `credits()`
+and `models()` all throw `response_invalid` on every Free account, and a create
+on the default model came back `403 {"error_type":"permission_denied","detail":
+"You don't have access to this model. Upgrade your plan to use it."}` reported
+as `auth_dead` - which sends the owner off to re-export a cookie that was fine.
+
+The client now reads the tier rather than assuming it (`suno.account()`,
+`api/account.ts`), resolves the create model from `models[].can_use`, and
+classifies 403 as `plan_required`.
+
+| Capability | Free | Paid |
+| --- | --- | --- |
+| Billing, credits, models | yes | yes |
+| Feed, search, pagination, clip info | yes | yes |
+| Aligned lyrics, downbeats, key, waveform | yes | yes |
+| Lyrics generation (free, no credits) | yes | yes |
+| Custom generation (`generate`) | yes, on `chirp-auk-turbo` | yes, on the account default |
+| `describe`, `extend`, `concat` | **blocked by the captcha gate**, not by the plan: both answered 422 `token_validation_failed` while `/api/c/check` said `required: true`. Untested on Free | yes |
+| Download + ID3 | yes | yes |
+| Remaster | submit accepted (`free_remasters_remaining: 0` did not block it). No usable entry in `remaster_model_types`, so it keeps `chirp-flounder` - which works | yes |
+| Persona, commercial rights | no (`accessible_features` lists only `tag_upsample`) | per plan |
+| Cover | yes, once the model is resolved | yes |
+| Stems | **403**, empty body: genuinely plan-gated | yes |
+| Captcha gate | `required: false`, version 2 | flickers, see below |
+
+A Free generation measured end to end on 2026-08-18, with no `model` passed:
+submitted, `queued` at 3s, `streaming` at 10s, both clips `complete` at 173s,
+two MP3s on disk. Credits: 10 of the 60 available, replenishing 100 per 300s per
+`credit_rate_limit`.
+
+Known limitation: the bundled drift baselines were recorded on a subscription,
+so a Free account sees `warn`-severity findings on `billing.info` for the
+tier-shaped difference (`plan.*` absent, `plans` present). They are accurate, not
+noise, and they are no longer `error`-severity: `plan.name` was removed from the
+consumed paths for that endpoint precisely because it is not universal.
 
 ## Verified working
 
@@ -13,8 +61,9 @@ is acceptable before building on this.
 | --- | --- | --- |
 | Session from cookie | `suno.login(cookie)` | Clerk `__client` cookie, ~7 days |
 | JWT auto-refresh | automatic | Refreshes with under 30 min left, single-flighted |
-| Credits and plan | `suno.credits()` | |
-| Model list | `suno.models()` | 9 models; v5.5 is `chirp-fenix` |
+| Credits and plan | `suno.credits()` | Returns `tier` too; works with no plan object |
+| Account tier and features | `suno.account()`, `suno.can(feature)` | One cached billing lookup |
+| Model list | `suno.models()` | 9 on a subscription, 6 on Free with 1 usable |
 | Captcha preflight | `suno.captchaCheck()` | Run before spending anything |
 | Custom generation | `suno.generate()` | 10 credits per call, 2 clips |
 | Description mode | `suno.describe()` | Lyrics written by Suno |
@@ -56,7 +105,7 @@ not a clip object. `requestStems` therefore returns the raw payload plus any
 clips it could parse. The stems appear in the feed within a minute as
 `<title> - Vocals` and `<title> - Instrumental` and download normally.
 
-## The captcha gate is a flicker, not a ban
+## The captcha gate does block creates (measured 2026-08-18)
 
 `POST /api/c/check` returns `{required: false}` for accounts above Suno's trust
 threshold and `true` for the rest.
@@ -73,11 +122,26 @@ What is actually known:
 - The flag flickers on its own. `captcha_version` also changed 1 to 2 during the
   same session, which suggests a server-side rollout rather than anything the
   client did.
-- Whether `required: true` genuinely blocks a create is **still untested**. It
-  was never attempted while the flag was true.
-- Because of that, `preflightCaptcha` defaults to **off**. Refusing to generate
-  on a flag that flickers would stall a bot for no reason. Turn it on if you
-  would rather fail fast than discover a wall mid-create.
+- `required: true` **does** block creates. Measured on the Free account on
+  2026-08-18, which is the case the earlier note left open: the flag flipped to
+  true mid-session and the identical custom-generate body that had produced two
+  finished clips forty minutes earlier began answering `HTTP 422
+  {"error_type": "token_validation_failed", "detail": "We couldn't verify your
+  request. Please refresh the page and try again."}`. `describe` and `extend`
+  answered the same. Credits did not move: 30 before, 30 after, so a gated
+  create is refused before it is charged.
+- What tripped it is not established. The session had run four creates
+  (generate, cover, remaster, plus a smoke generate) inside about thirty
+  minutes on a Free account, which is the obvious suspect and remains a guess.
+  Worth knowing if you point a bot at a Free account.
+- How to clear it is still not established either. The one observation on the
+  paid account was that it cleared itself within about forty minutes with no
+  manual intervention.
+- `preflightCaptcha` still defaults to **off**, now for a narrower reason: a
+  gated create costs nothing and already reports `captcha_required` with an
+  actionable message, so the preflight saves a round trip rather than credits -
+  and a flag that flickers would stall a bot on a false positive. Turn it on if
+  you would rather fail fast.
 
 To be careful anyway: the probe defaults to **one** variant per run, spaced 15s, rotated
 daily by `variantForDay()`. Do not run `--all-variants` on a schedule, and never

@@ -6,6 +6,12 @@ import {
   type DescribeGenerateOptions,
 } from './api/generate.js';
 import {
+  describeAccount,
+  pickDefaultModel,
+  pickRemasterModel,
+  type AccountInfo,
+} from './api/account.js';
+import {
   concat,
   cover,
   extend,
@@ -45,21 +51,39 @@ import { artworkUrl, downloadClip, downloadClips, type DownloadOptions } from '.
 import { SunoError } from './errors.js';
 import { GenerationJob } from './poll.js';
 import { registryFromBaselines } from './drift/registry.js';
+import type { AccountTier } from './api/account.js';
 import type { AlignedWord, BillingInfo, CaptchaCheck, Clip, FeedPage, LyricsResult, Model, PersonaInfo } from './schemas.js';
 
 export interface SunoOptions extends SunoClientOptions {
   /**
    * Refuse to submit a generation when `/api/c/check` reports a captcha gate.
    *
-   * OFF by default, which is the opposite of the obvious choice and is the
-   * result of watching the flag for an afternoon: it went false, true, false
-   * again within forty minutes with nothing to explain it, while the account
-   * holder was never shown a captcha in the web UI. Blocking creates on a flag
-   * that flickers stalls a bot for no reason, and it is not even established
-   * that `required: true` prevents a create. Turn it on if you would rather
-   * fail fast than find out mid-create.
+   * `required: true` genuinely does block creates. Measured on a Free account
+   * 2026-08-18: the flag flipped mid-session and the identical body that had
+   * generated two clips minutes earlier began answering 422
+   * `token_validation_failed` - custom, describe and extend alike.
+   *
+   * Still OFF by default, for a narrower reason than before: a gated create
+   * costs nothing. Suno rejects it before charging, and the client already
+   * reports `captcha_required` with an actionable message, so the preflight
+   * buys one saved round trip rather than saved credits - while a flag that has
+   * been watched going false, true, false within forty minutes would stall a
+   * bot on a false positive. Turn it on if you would rather fail fast.
    */
   preflightCaptcha?: boolean;
+  /**
+   * Ask the account which models it may use before a create that names none.
+   *
+   * ON by default, and the reason is a live failure: `DEFAULT_MODEL` is v5.5,
+   * which is subscription-only, so every default `generate()` on a Free account
+   * came back HTTP 403 `You don't have access to this model`. The lookup is one
+   * cached billing call per client, and it falls back to `DEFAULT_MODEL` if
+   * billing is unavailable rather than adding a new way for a create to fail.
+   *
+   * Turn it off to pin the historical behaviour, or just pass `model`
+   * explicitly - an explicit model always skips the lookup.
+   */
+  resolveModel?: boolean;
 }
 
 /**
@@ -73,6 +97,9 @@ export interface SunoOptions extends SunoClientOptions {
 export class Suno {
   readonly client: SunoClient;
   private readonly preflightCaptcha: boolean;
+  private readonly wantModelResolution: boolean;
+  /** One billing lookup per client, shared by every create. */
+  private accountOnce: Promise<AccountInfo> | undefined;
 
   constructor(options: SunoOptions = {}) {
     this.client = new SunoClient({
@@ -80,6 +107,7 @@ export class Suno {
       ...options,
     });
     this.preflightCaptcha = options.preflightCaptcha ?? false;
+    this.wantModelResolution = options.resolveModel ?? true;
   }
 
   // --- account -------------------------------------------------------------
@@ -88,14 +116,90 @@ export class Suno {
     return billingInfo(this.client, signal);
   }
 
-  async credits(signal?: AbortSignal): Promise<{ left: number; plan: string; monthlyLimit: number | undefined }> {
-    const info = await billingInfo(this.client, signal);
-    return { left: info.total_credits_left, plan: info.plan.name, monthlyLimit: info.monthly_limit };
+  /**
+   * Tier, plan, credits, unlocked features and usable models, in one call.
+   *
+   * Cached per client. Pass `refresh` after something that changes the answer,
+   * such as an upgrade or a long-running process crossing a renewal.
+   */
+  async account(options: { refresh?: boolean; signal?: AbortSignal } = {}): Promise<AccountInfo> {
+    if (options.refresh === true) this.accountOnce = undefined;
+    // Assigned before the await so concurrent creates share one billing call.
+    this.accountOnce ??= billingInfo(this.client, options.signal)
+      .then(describeAccount)
+      .catch((err: unknown) => {
+        // A failed lookup must not be cached, or one bad minute pins every
+        // later create to the fallback model for the life of the process.
+        this.accountOnce = undefined;
+        throw err;
+      });
+    return this.accountOnce;
+  }
+
+  /**
+   * Remaining credits, live.
+   *
+   * Deliberately NOT served from the `account()` cache. Tier, features and
+   * usable models hold still for a session; the credit balance moves on every
+   * create, and a queue worker checking headroom before each generation would
+   * read one frozen number for the life of the process - spending blind, or
+   * pausing itself forever. See examples/request-queue.ts.
+   */
+  async credits(
+    signal?: AbortSignal,
+  ): Promise<{ left: number; plan: string; tier: AccountTier; monthlyLimit: number | undefined }> {
+    // describeAccount, not `info.plan.name`: a Free account has no plan object.
+    const info = describeAccount(await billingInfo(this.client, signal));
+    return {
+      left: info.creditsLeft,
+      plan: info.planName,
+      tier: info.tier,
+      monthlyLimit: info.monthlyLimit,
+    };
+  }
+
+  /**
+   * True when `accessible_features` names this feature, e.g. `get_stems`.
+   *
+   * A `true` is reliable. A `false` is not proof of a gate: a Free account
+   * lists only `tag_upsample` and yet covers submit fine once the model is
+   * resolved, because cover was never feature-gated - only its default model
+   * was. Use this to skip work that is known to 403 (`get_stems`), not as a
+   * blanket precondition, and let `plan_required` be the real answer.
+   */
+  async can(feature: string, signal?: AbortSignal): Promise<boolean> {
+    const info = await this.account(signal ? { signal } : {});
+    return info.features.includes(feature);
+  }
+
+  /**
+   * The model a create will use when the caller names none.
+   *
+   * Falls back to `DEFAULT_MODEL` when billing cannot be read: a create that
+   * might work beats a create that certainly does not.
+   */
+  private async modelFor(explicit: string | undefined, signal?: AbortSignal): Promise<string | undefined> {
+    if (explicit !== undefined || !this.wantModelResolution) return explicit;
+    try {
+      const info = await this.account(signal ? { signal } : {});
+      return pickDefaultModel(info.models);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async remasterModelFor(explicit: string | undefined, signal?: AbortSignal): Promise<string | undefined> {
+    if (explicit !== undefined || !this.wantModelResolution) return explicit;
+    try {
+      const info = await this.account(signal ? { signal } : {});
+      return pickRemasterModel(info.raw);
+    } catch {
+      return undefined;
+    }
   }
 
   async models(signal?: AbortSignal): Promise<Model[]> {
-    const info = await billingInfo(this.client, signal);
-    return info.models ?? [];
+    return (await this.account(signal ? { signal } : {})).models;
   }
 
   captchaCheck(ctype = 'generation', signal?: AbortSignal): Promise<CaptchaCheck> {
@@ -119,7 +223,7 @@ export class Suno {
       throw new SunoError({
         code: 'captcha_required',
         message:
-          'Suno is asking this account for a captcha. Generate one song manually at suno.com to clear it, or pass a solved token as captchaToken.',
+          'Suno is asking this account for a captcha, and while it does, every create answers 422 rather than costing credits. Pass a solved token as captchaToken, or wait - the flag has been seen clearing itself within the hour.',
         alert: true,
       });
     }
@@ -128,31 +232,47 @@ export class Suno {
   /** Custom mode: your lyrics, your style prompt, your title. */
   async generate(options: CustomGenerateOptions): Promise<GenerationJob> {
     await this.assertNotGated(options.signal);
-    const clips = await submitGenerate(this.client, buildCustomBody(options), options.signal);
+    const model = await this.modelFor(options.model, options.signal);
+    const clips = await submitGenerate(
+      this.client,
+      buildCustomBody(model === undefined ? options : { ...options, model }),
+      options.signal,
+    );
     return new GenerationJob(this.client, clips);
   }
 
   /** Inspiration mode: a description, and Suno writes the lyrics. */
   async describe(options: DescribeGenerateOptions): Promise<GenerationJob> {
     await this.assertNotGated(options.signal);
-    const clips = await submitGenerate(this.client, buildDescribeBody(options), options.signal);
+    const model = await this.modelFor(options.model, options.signal);
+    const clips = await submitGenerate(
+      this.client,
+      buildDescribeBody(model === undefined ? options : { ...options, model }),
+      options.signal,
+    );
     return new GenerationJob(this.client, clips);
   }
 
   async cover(clipId: string, options: CoverOptions = {}): Promise<GenerationJob> {
     await this.assertNotGated(options.signal);
-    return new GenerationJob(this.client, await cover(this.client, clipId, options));
+    const model = await this.modelFor(options.model, options.signal);
+    const resolved = model === undefined ? options : { ...options, model };
+    return new GenerationJob(this.client, await cover(this.client, clipId, resolved));
   }
 
   async remaster(clipId: string, options: RemasterOptions = {}): Promise<GenerationJob> {
     await this.assertNotGated(options.signal);
-    return new GenerationJob(this.client, await remaster(this.client, clipId, options));
+    const model = await this.remasterModelFor(options.model, options.signal);
+    const resolved = model === undefined ? options : { ...options, model };
+    return new GenerationJob(this.client, await remaster(this.client, clipId, resolved));
   }
 
   /** Experimental: see docs/STATUS.md before relying on this. */
   async extend(clipId: string, options: ExtendOptions): Promise<GenerationJob> {
     await this.assertNotGated(options.signal);
-    return new GenerationJob(this.client, await extend(this.client, clipId, options));
+    const model = await this.modelFor(options.model, options.signal);
+    const resolved = model === undefined ? options : { ...options, model };
+    return new GenerationJob(this.client, await extend(this.client, clipId, resolved));
   }
 
   concat(clipId: string, signal?: AbortSignal): Promise<Clip> {
