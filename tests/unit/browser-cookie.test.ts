@@ -25,6 +25,32 @@ describe('decrypting a Chromium cookie', () => {
     expect(decryptValue(encrypt(COOKIE), KEY)).toBe(COOKIE);
   });
 
+  it('picks the cookie even when the 32-byte prefix is itself printable text', () => {
+    // The regression this guards. A domain hash is random bytes, and a "no
+    // control characters" test accepts one 2.18% of the time, at which point
+    // the decode returns hash-plus-cookie, login sends it, and Suno answers 401
+    // blaming the session. Here the prefix is chosen to be entirely printable,
+    // which is the worst case that heuristic can meet: the shape test must
+    // still find the cookie behind it.
+    const prefix = Buffer.from('A'.repeat(32), 'utf8');
+    const cipher = createCipheriv('aes-128-cbc', KEY, IV);
+    const body = Buffer.concat([
+      cipher.update(Buffer.concat([prefix, Buffer.from(COOKIE, 'utf8')])),
+      cipher.final(),
+    ]);
+    const blob = Buffer.concat([Buffer.from('v10', 'latin1'), body]);
+    expect(decryptValue(blob, KEY)).toBe(COOKIE);
+  });
+
+  it('refuses rather than guessing when neither candidate has a known shape', () => {
+    // Two printable candidates and no JWT among them: returning either would be
+    // a coin flip, and a wrong cookie costs a 401 that points at the session.
+    const cipher = createCipheriv('aes-128-cbc', KEY, IV);
+    const body = Buffer.concat([cipher.update(Buffer.from('B'.repeat(80), 'utf8')), cipher.final()]);
+    const blob = Buffer.concat([Buffer.from('v10', 'latin1'), body]);
+    expect(decryptValue(blob, KEY)).toBeUndefined();
+  });
+
   it('strips the 32-byte domain hash Chrome 127 puts in front of the value', () => {
     // Without the strip this returns 32 bytes of binary followed by the cookie,
     // which is not an error and not a usable cookie either: login would send it
