@@ -63,13 +63,6 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "seen": 5,
         "total": 5
       },
-      "cancel_on": {
-        "types": [
-          "string"
-        ],
-        "seen": 5,
-        "total": 5
-      },
       "period": {
         "types": [
           "string"
@@ -146,6 +139,48 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         ],
         "seen": 5,
         "total": 5
+      },
+      "download_credit_packs[]": {
+        "types": [
+          "object"
+        ],
+        "seen": 20,
+        "total": 20
+      },
+      "download_credit_packs[].id": {
+        "types": [
+          "string"
+        ],
+        "seen": 20,
+        "total": 20
+      },
+      "download_credit_packs[].amount": {
+        "types": [
+          "number"
+        ],
+        "seen": 20,
+        "total": 20
+      },
+      "download_credit_packs[].price_usd": {
+        "types": [
+          "number"
+        ],
+        "seen": 20,
+        "total": 20
+      },
+      "download_credit_packs[].price_amount": {
+        "types": [
+          "string"
+        ],
+        "seen": 20,
+        "total": 20
+      },
+      "download_credit_packs[].price_currency_code": {
+        "types": [
+          "string"
+        ],
+        "seen": 20,
+        "total": 20
       },
       "plan": {
         "types": [
@@ -235,29 +270,29 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "types": [
           "object"
         ],
-        "seen": 170,
-        "total": 170
+        "seen": 160,
+        "total": 160
       },
       "plan.prices[].period_type": {
         "types": [
           "string"
         ],
-        "seen": 170,
-        "total": 170
+        "seen": 160,
+        "total": 160
       },
       "plan.prices[].currency": {
         "types": [
           "string"
         ],
-        "seen": 170,
-        "total": 170
+        "seen": 160,
+        "total": 160
       },
       "plan.prices[].price": {
         "types": [
           "number"
         ],
-        "seen": 170,
-        "total": 170
+        "seen": 160,
+        "total": 160
       },
       "models": {
         "types": [
@@ -270,281 +305,281 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "types": [
           "object"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].can_use": {
         "types": [
           "boolean"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].max_lengths": {
         "types": [
           "object"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].max_lengths.title": {
         "types": [
           "number"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].max_lengths.prompt": {
         "types": [
           "number"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].max_lengths.tags": {
         "types": [
           "number"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].max_lengths.negative_tags": {
         "types": [
           "number"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].max_lengths.gpt_description_prompt": {
         "types": [
           "number"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].name": {
         "types": [
           "string"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].external_key": {
         "types": [
           "string"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].major_version": {
         "types": [
           "number"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].description": {
         "types": [
           "string"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].is_default_free_model": {
         "types": [
           "boolean"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].is_default_model": {
         "types": [
           "boolean"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].badges": {
         "types": [
           "array"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].badges[]": {
         "types": [
           "string"
         ],
-        "seen": 25,
-        "total": 25
+        "seen": 10,
+        "total": 10
       },
       "models[].model_badges": {
         "types": [
           "array"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].model_badges[]": {
         "types": [
           "object"
         ],
-        "seen": 25,
-        "total": 25
+        "seen": 10,
+        "total": 10
       },
       "models[].model_badges[].display_name": {
         "types": [
           "string"
         ],
-        "seen": 25,
-        "total": 25
+        "seen": 10,
+        "total": 10
       },
       "models[].model_badges[].light": {
         "types": [
           "object"
         ],
-        "seen": 25,
-        "total": 25
+        "seen": 10,
+        "total": 10
       },
       "models[].model_badges[].light.text_color": {
         "types": [
           "string"
         ],
-        "seen": 25,
-        "total": 25
+        "seen": 10,
+        "total": 10
       },
       "models[].model_badges[].light.background_color": {
         "types": [
           "string"
         ],
-        "seen": 25,
-        "total": 25
+        "seen": 10,
+        "total": 10
       },
       "models[].model_badges[].light.border_color": {
         "types": [
           "string"
         ],
-        "seen": 25,
-        "total": 25
+        "seen": 10,
+        "total": 10
       },
       "models[].model_badges[].dark": {
         "types": [
           "object"
         ],
-        "seen": 25,
-        "total": 25
+        "seen": 10,
+        "total": 10
       },
       "models[].model_badges[].dark.text_color": {
         "types": [
           "string"
         ],
-        "seen": 25,
-        "total": 25
+        "seen": 10,
+        "total": 10
       },
       "models[].model_badges[].dark.background_color": {
         "types": [
           "string"
         ],
-        "seen": 25,
-        "total": 25
+        "seen": 10,
+        "total": 10
       },
       "models[].model_badges[].dark.border_color": {
         "types": [
           "string"
         ],
-        "seen": 25,
-        "total": 25
+        "seen": 10,
+        "total": 10
       },
       "models[].style": {
         "types": [
           "object"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].style.light": {
         "types": [
           "object"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].style.light.text_color": {
         "types": [
           "string"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].style.dark": {
         "types": [
           "object"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].style.dark.text_color": {
         "types": [
           "string"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].capabilities": {
         "types": [
           "array"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].capabilities[]": {
         "types": [
           "string"
         ],
-        "seen": 425,
-        "total": 425
+        "seen": 20,
+        "total": 20
       },
       "models[].features": {
         "types": [
           "array"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].features[]": {
         "types": [
           "string"
         ],
-        "seen": 100,
-        "total": 100
+        "seen": 75,
+        "total": 75
       },
       "models[].allowed_condition_combinations": {
         "types": [
           "array"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "models[].allowed_condition_combinations[]": {
         "types": [
           "array"
         ],
-        "seen": 380,
-        "total": 380
+        "seen": 225,
+        "total": 225
       },
       "models[].allowed_condition_combinations[][]": {
         "types": [
           "string"
         ],
-        "seen": 540,
-        "total": 540
+        "seen": 330,
+        "total": 330
       },
       "models[].id": {
         "types": [
           "string"
         ],
-        "seen": 45,
-        "total": 45
+        "seen": 15,
+        "total": 15
       },
       "plan_price": {
         "types": [
@@ -563,6 +598,13 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
       "plan_currency_price": {
         "types": [
           "number"
+        ],
+        "seen": 5,
+        "total": 5
+      },
+      "default_currency": {
+        "types": [
+          "string"
         ],
         "seen": 5,
         "total": 5
@@ -655,15 +697,15 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "types": [
           "object"
         ],
-        "seen": 190,
-        "total": 190
+        "seen": 200,
+        "total": 200
       },
       "plans[].usage_plan_features[].name": {
         "types": [
           "string"
         ],
-        "seen": 190,
-        "total": 190
+        "seen": 200,
+        "total": 200
       },
       "plans[].prices": {
         "types": [
@@ -676,29 +718,29 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "types": [
           "object"
         ],
-        "seen": 340,
-        "total": 340
+        "seen": 320,
+        "total": 320
       },
       "plans[].prices[].period_type": {
         "types": [
           "string"
         ],
-        "seen": 340,
-        "total": 340
+        "seen": 320,
+        "total": 320
       },
       "plans[].prices[].currency": {
         "types": [
           "string"
         ],
-        "seen": 340,
-        "total": 340
+        "seen": 320,
+        "total": 320
       },
       "plans[].prices[].price": {
         "types": [
           "number"
         ],
-        "seen": 340,
-        "total": 340
+        "seen": 320,
+        "total": 320
       },
       "accessible_features": {
         "types": [
@@ -928,36 +970,78 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "types": [
           "object"
         ],
-        "seen": 15,
-        "total": 15
+        "seen": 5,
+        "total": 5
       },
       "remaster_model_types[].name": {
         "types": [
           "string"
         ],
-        "seen": 15,
-        "total": 15
+        "seen": 5,
+        "total": 5
       },
       "remaster_model_types[].external_key": {
         "types": [
           "string"
         ],
-        "seen": 15,
-        "total": 15
+        "seen": 5,
+        "total": 5
       },
       "remaster_model_types[].is_default_model": {
         "types": [
           "boolean"
         ],
-        "seen": 15,
-        "total": 15
+        "seen": 5,
+        "total": 5
       },
       "remaster_model_types[].can_use": {
         "types": [
           "boolean"
         ],
-        "seen": 15,
-        "total": 15
+        "seen": 5,
+        "total": 5
+      },
+      "download_usage": {
+        "types": [
+          "object"
+        ],
+        "seen": 5,
+        "total": 5
+      },
+      "download_usage.current_period_downloads_used": {
+        "types": [
+          "number"
+        ],
+        "seen": 5,
+        "total": 5
+      },
+      "download_usage.current_period_downloads_limit": {
+        "types": [
+          "number"
+        ],
+        "seen": 5,
+        "total": 5
+      },
+      "download_usage.additional_download_remaining": {
+        "types": [
+          "number"
+        ],
+        "seen": 5,
+        "total": 5
+      },
+      "download_usage.current_period_download_top_ups_purchased": {
+        "types": [
+          "number"
+        ],
+        "seen": 5,
+        "total": 5
+      },
+      "download_usage.current_period_download_top_up_purchase_limit": {
+        "types": [
+          "number"
+        ],
+        "seen": 5,
+        "total": 5
       },
       "is_pause_scheduled": {
         "types": [
@@ -981,7 +1065,7 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "total": 5
       }
     },
-    "recordedAt": "2026-08-16T23:32:09.031Z"
+    "recordedAt": "2026-09-10T14:42:23.561Z"
   },
   {
     "endpoint": "captcha.check",
@@ -1002,7 +1086,7 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "total": 5
       }
     },
-    "recordedAt": "2026-08-16T23:32:09.031Z"
+    "recordedAt": "2026-09-10T14:42:23.561Z"
   },
   {
     "endpoint": "feed.byIds",
@@ -1096,36 +1180,36 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "types": [
           "object"
         ],
-        "seen": 10,
-        "total": 10
+        "seen": 5,
+        "total": 5
       },
       "[].media_urls[].url": {
         "types": [
           "string"
         ],
-        "seen": 10,
-        "total": 10
+        "seen": 5,
+        "total": 5
       },
       "[].media_urls[].content_type": {
         "types": [
           "string"
         ],
-        "seen": 10,
-        "total": 10
+        "seen": 5,
+        "total": 5
       },
       "[].media_urls[].delivery": {
         "types": [
           "string"
         ],
-        "seen": 10,
-        "total": 10
+        "seen": 5,
+        "total": 5
       },
       "[].media_urls[].encoding": {
         "types": [
           "string"
         ],
         "seen": 5,
-        "total": 10
+        "total": 5
       },
       "[].image_url": {
         "types": [
@@ -1167,6 +1251,13 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
           "string"
         ],
         "seen": 5,
+        "total": 5
+      },
+      "[].metadata.negative_tags": {
+        "types": [
+          "string"
+        ],
+        "seen": 3,
         "total": 5
       },
       "[].metadata.prompt": {
@@ -1211,6 +1302,48 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "seen": 5,
         "total": 5
       },
+      "[].metadata.is_max_mode": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 3,
+        "total": 5
+      },
+      "[].metadata.control_sliders": {
+        "types": [
+          "object"
+        ],
+        "seen": 5,
+        "total": 5
+      },
+      "[].metadata.control_sliders.style_weight": {
+        "types": [
+          "number"
+        ],
+        "seen": 3,
+        "total": 5
+      },
+      "[].metadata.control_sliders.weirdness_constraint": {
+        "types": [
+          "number"
+        ],
+        "seen": 3,
+        "total": 5
+      },
+      "[].metadata.control_sliders.aug_creativity": {
+        "types": [
+          "number"
+        ],
+        "seen": 5,
+        "total": 5
+      },
+      "[].metadata.vox_render_mode": {
+        "types": [
+          "string"
+        ],
+        "seen": 5,
+        "total": 5
+      },
       "[].metadata.can_remix": {
         "types": [
           "boolean"
@@ -1237,6 +1370,13 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
           "boolean"
         ],
         "seen": 5,
+        "total": 5
+      },
+      "[].metadata.video_is_stale": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 2,
         "total": 5
       },
       "[].metadata.uses_latest_model": {
@@ -1351,19 +1491,19 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "seen": 5,
         "total": 5
       },
-      "[].metadata.model_badges.songrow.light.background_color": {
+      "[].metadata.model_badges.songrow.light.text_color_gradient": {
         "types": [
-          "string"
+          "array"
         ],
         "seen": 5,
         "total": 5
       },
-      "[].metadata.model_badges.songrow.light.border_color": {
+      "[].metadata.model_badges.songrow.light.text_color_gradient[]": {
         "types": [
           "string"
         ],
-        "seen": 5,
-        "total": 5
+        "seen": 10,
+        "total": 10
       },
       "[].metadata.model_badges.songrow.dark": {
         "types": [
@@ -1379,19 +1519,19 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "seen": 5,
         "total": 5
       },
-      "[].metadata.model_badges.songrow.dark.background_color": {
+      "[].metadata.model_badges.songrow.dark.text_color_gradient": {
         "types": [
-          "string"
+          "array"
         ],
         "seen": 5,
         "total": 5
       },
-      "[].metadata.model_badges.songrow.dark.border_color": {
+      "[].metadata.model_badges.songrow.dark.text_color_gradient[]": {
         "types": [
           "string"
         ],
-        "seen": 5,
-        "total": 5
+        "seen": 10,
+        "total": 10
       },
       "[].metadata.image_config": {
         "types": [
@@ -1498,6 +1638,48 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "seen": 5,
         "total": 5
       },
+      "[].reaction": {
+        "types": [
+          "object"
+        ],
+        "seen": 5,
+        "total": 5
+      },
+      "[].reaction.play_count": {
+        "types": [
+          "number"
+        ],
+        "seen": 5,
+        "total": 5
+      },
+      "[].reaction.skip_count": {
+        "types": [
+          "number"
+        ],
+        "seen": 5,
+        "total": 5
+      },
+      "[].reaction.flagged": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 5,
+        "total": 5
+      },
+      "[].reaction.clip": {
+        "types": [
+          "string"
+        ],
+        "seen": 5,
+        "total": 5
+      },
+      "[].reaction.updated_at": {
+        "types": [
+          "string"
+        ],
+        "seen": 5,
+        "total": 5
+      },
       "[].is_persona_root": {
         "types": [
           "boolean"
@@ -1533,6 +1715,13 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "seen": 5,
         "total": 5
       },
+      "[].explicit": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 5,
+        "total": 5
+      },
       "[].comment_count": {
         "types": [
           "number"
@@ -1545,6 +1734,27 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
           "number"
         ],
         "seen": 5,
+        "total": 5
+      },
+      "[].display_tags": {
+        "types": [
+          "string"
+        ],
+        "seen": 4,
+        "total": 5
+      },
+      "[].is_download_unlocked": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 5,
+        "total": 5
+      },
+      "[].download_unlocked_at": {
+        "types": [
+          "string"
+        ],
+        "seen": 2,
         "total": 5
       },
       "[].is_contest_clip": {
@@ -1586,31 +1796,45 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "types": [
           "object"
         ],
-        "seen": 85,
-        "total": 85
+        "seen": 98,
+        "total": 98
       },
       "[].action_config.actions[].action_type": {
         "types": [
           "string"
         ],
-        "seen": 85,
-        "total": 85
+        "seen": 98,
+        "total": 98
       },
       "[].action_config.actions[].disabled": {
         "types": [
           "boolean"
         ],
-        "seen": 85,
-        "total": 85
+        "seen": 98,
+        "total": 98
       },
       "[].action_config.actions[].visible": {
         "types": [
           "boolean"
         ],
-        "seen": 85,
-        "total": 85
+        "seen": 98,
+        "total": 98
       },
-      "[].explicit": {
+      "[].metadata.gpt_description_prompt": {
+        "types": [
+          "string"
+        ],
+        "seen": 2,
+        "total": 3
+      },
+      "[].metadata.task": {
+        "types": [
+          "string"
+        ],
+        "seen": 2,
+        "total": 3
+      },
+      "[].metadata.show_remix": {
         "types": [
           "boolean"
         ],
@@ -1618,896 +1842,1085 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "total": 3
       }
     },
-    "recordedAt": "2026-08-16T23:32:09.031Z"
+    "recordedAt": "2026-09-10T14:42:23.561Z"
   },
   {
     "endpoint": "feed.v3",
-    "samples": 5,
+    "samples": 4,
     "paths": {
       "clips": {
         "types": [
           "array"
         ],
-        "seen": 5,
-        "total": 5
+        "seen": 4,
+        "total": 4
       },
       "clips[]": {
         "types": [
           "object"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].status": {
         "types": [
           "string"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].title": {
         "types": [
           "string"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].play_count": {
         "types": [
           "number"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].upvote_count": {
         "types": [
           "number"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].allow_comments": {
         "types": [
           "boolean"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].is_verified": {
         "types": [
           "boolean"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].id": {
         "types": [
           "string"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].entity_type": {
         "types": [
           "string"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].video_url": {
         "types": [
           "string"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].audio_url": {
         "types": [
           "string"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].media_urls": {
         "types": [
           "array"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].media_urls[]": {
         "types": [
           "object"
         ],
-        "seen": 174,
-        "total": 174
+        "seen": 77,
+        "total": 77
       },
       "clips[].media_urls[].url": {
         "types": [
           "string"
         ],
-        "seen": 174,
-        "total": 174
+        "seen": 77,
+        "total": 77
       },
       "clips[].media_urls[].content_type": {
         "types": [
           "string"
         ],
-        "seen": 174,
-        "total": 174
+        "seen": 77,
+        "total": 77
       },
       "clips[].media_urls[].delivery": {
         "types": [
           "string"
         ],
-        "seen": 174,
-        "total": 174
+        "seen": 77,
+        "total": 77
       },
       "clips[].media_urls[].encoding": {
         "types": [
           "string"
         ],
-        "seen": 84,
-        "total": 174
+        "seen": 77,
+        "total": 77
       },
       "clips[].image_url": {
         "types": [
           "string"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].image_large_url": {
         "types": [
           "string"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].major_model_version": {
         "types": [
           "string"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].model_name": {
         "types": [
           "string"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].metadata": {
         "types": [
           "object"
         ],
-        "seen": 90,
-        "total": 90
+        "seen": 77,
+        "total": 77
       },
       "clips[].metadata.tags": {
         "types": [
           "string"
         ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.prompt": {
-        "types": [
-          "string"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].metadata.type": {
-        "types": [
-          "string"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].metadata.duration": {
-        "types": [
-          "number"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].metadata.refund_credits": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.stream": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.make_instrumental": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.can_remix": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].metadata.is_remix": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].metadata.priority": {
-        "types": [
-          "number"
-        ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.has_stem": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].metadata.max_bpm": {
-        "types": [
-          "number"
-        ],
-        "seen": 54,
-        "total": 90
-      },
-      "clips[].metadata.min_bpm": {
-        "types": [
-          "number"
-        ],
-        "seen": 54,
-        "total": 90
-      },
-      "clips[].metadata.avg_bpm": {
-        "types": [
-          "number"
-        ],
-        "seen": 54,
-        "total": 90
-      },
-      "clips[].metadata.uses_latest_model": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].metadata.model_badges": {
-        "types": [
-          "object"
-        ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songcard": {
-        "types": [
-          "object"
-        ],
-        "seen": 62,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songcard.display_name": {
-        "types": [
-          "string"
-        ],
-        "seen": 62,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songcard.light": {
-        "types": [
-          "object"
-        ],
-        "seen": 62,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songcard.light.text_color": {
-        "types": [
-          "string"
-        ],
-        "seen": 62,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songcard.light.background_color": {
-        "types": [
-          "string"
-        ],
-        "seen": 62,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songcard.light.border_color": {
-        "types": [
-          "string"
-        ],
-        "seen": 62,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songcard.dark": {
-        "types": [
-          "object"
-        ],
-        "seen": 62,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songcard.dark.text_color": {
-        "types": [
-          "string"
-        ],
-        "seen": 62,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songcard.dark.background_color": {
-        "types": [
-          "string"
-        ],
-        "seen": 62,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songcard.dark.border_color": {
-        "types": [
-          "string"
-        ],
-        "seen": 62,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songrow": {
-        "types": [
-          "object"
-        ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songrow.display_name": {
-        "types": [
-          "string"
-        ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songrow.light": {
-        "types": [
-          "object"
-        ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songrow.light.text_color": {
-        "types": [
-          "string"
-        ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songrow.light.background_color": {
-        "types": [
-          "string"
-        ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songrow.light.border_color": {
-        "types": [
-          "string"
-        ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songrow.dark": {
-        "types": [
-          "object"
-        ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songrow.dark.text_color": {
-        "types": [
-          "string"
-        ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songrow.dark.background_color": {
-        "types": [
-          "string"
-        ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.model_badges.songrow.dark.border_color": {
-        "types": [
-          "string"
-        ],
-        "seen": 88,
-        "total": 90
-      },
-      "clips[].metadata.image_config": {
-        "types": [
-          "object"
-        ],
-        "seen": 20,
-        "total": 90
-      },
-      "clips[].metadata.image_config.use_image_config_template": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 20,
-        "total": 90
-      },
-      "clips[].metadata.image_config.id": {
-        "types": [
-          "string"
-        ],
-        "seen": 20,
-        "total": 90
-      },
-      "clips[].metadata.image_config.default_cover_style": {
-        "types": [
-          "string"
-        ],
-        "seen": 20,
-        "total": 90
-      },
-      "clips[].metadata.is_mumble": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 82,
-        "total": 90
-      },
-      "clips[].is_liked": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].user_id": {
-        "types": [
-          "string"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].display_name": {
-        "types": [
-          "string"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].handle": {
-        "types": [
-          "string"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].is_handle_updated": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].avatar_image_url": {
-        "types": [
-          "string"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].is_trashed": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].is_hidden": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].created_at": {
-        "types": [
-          "string"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].is_public": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].is_persona_root": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].is_following_creator": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].albums": {
-        "types": [
-          "array"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].ownership": {
-        "types": [
-          "object"
-        ],
-        "seen": 56,
-        "total": 90
-      },
-      "clips[].ownership.ownership_reason": {
-        "types": [
-          "string"
-        ],
-        "seen": 56,
-        "total": 90
-      },
-      "clips[].comment_count": {
-        "types": [
-          "number"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].flag_count": {
-        "types": [
-          "number"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].is_contest_clip": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].has_hook": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].batch_index": {
-        "types": [
-          "number"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].action_config": {
-        "types": [
-          "object"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].action_config.actions": {
-        "types": [
-          "array"
-        ],
-        "seen": 90,
-        "total": 90
-      },
-      "clips[].action_config.actions[]": {
-        "types": [
-          "object"
-        ],
-        "seen": 1530,
-        "total": 1530
-      },
-      "clips[].action_config.actions[].action_type": {
-        "types": [
-          "string"
-        ],
-        "seen": 1530,
-        "total": 1530
-      },
-      "clips[].action_config.actions[].disabled": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 1530,
-        "total": 1530
-      },
-      "clips[].action_config.actions[].visible": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 1530,
-        "total": 1530
-      },
-      "clips[].explicit": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 81,
-        "total": 90
-      },
-      "clips[].metadata.gpt_description_prompt": {
-        "types": [
-          "string"
-        ],
-        "seen": 46,
-        "total": 90
-      },
-      "clips[].metadata.key": {
-        "types": [
-          "string"
-        ],
-        "seen": 2,
-        "total": 90
-      },
-      "clips[].display_tags": {
-        "types": [
-          "string"
-        ],
-        "seen": 54,
-        "total": 90
-      },
-      "clips[].metadata.stem_from_id": {
-        "types": [
-          "string"
-        ],
-        "seen": 2,
-        "total": 90
-      },
-      "clips[].metadata.can_publish_with_vocal": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 2,
-        "total": 90
-      },
-      "clips[].clip_roots": {
-        "types": [
-          "object"
-        ],
-        "seen": 2,
-        "total": 90
-      },
-      "clips[].clip_roots.clips": {
-        "types": [
-          "array"
-        ],
-        "seen": 2,
-        "total": 90
-      },
-      "clips[].clip_roots.clips[]": {
-        "types": [
-          "object"
-        ],
-        "seen": 2,
-        "total": 2
-      },
-      "clips[].clip_roots.clips[].id": {
-        "types": [
-          "string"
-        ],
-        "seen": 2,
-        "total": 2
-      },
-      "clips[].clip_roots.clips[].title": {
-        "types": [
-          "string"
-        ],
-        "seen": 2,
-        "total": 2
-      },
-      "clips[].clip_roots.clips[].image_url": {
-        "types": [
-          "string"
-        ],
-        "seen": 2,
-        "total": 2
-      },
-      "clips[].clip_roots.clips[].is_public": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 2,
-        "total": 2
-      },
-      "clips[].clip_roots.clips[].user_display_name": {
-        "types": [
-          "string"
-        ],
-        "seen": 2,
-        "total": 2
-      },
-      "clips[].clip_roots.clips[].user_handle": {
-        "types": [
-          "string"
-        ],
-        "seen": 2,
-        "total": 2
-      },
-      "clips[].clip_roots.clips[].user_avatar_image_url": {
-        "types": [
-          "string"
-        ],
-        "seen": 2,
-        "total": 2
-      },
-      "clips[].clip_roots.clip_attribution_type": {
-        "types": [
-          "string"
-        ],
-        "seen": 2,
-        "total": 90
-      },
-      "next_cursor": {
-        "types": [
-          "string"
-        ],
-        "seen": 4,
-        "total": 5
-      },
-      "has_more": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 5,
-        "total": 5
-      },
-      "clips[].reaction": {
-        "types": [
-          "object"
-        ],
-        "seen": 67,
-        "total": 70
-      },
-      "clips[].reaction.play_count": {
-        "types": [
-          "number"
-        ],
-        "seen": 67,
-        "total": 70
-      },
-      "clips[].reaction.skip_count": {
-        "types": [
-          "number"
-        ],
-        "seen": 67,
-        "total": 70
-      },
-      "clips[].reaction.flagged": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 67,
-        "total": 70
-      },
-      "clips[].reaction.clip": {
-        "types": [
-          "string"
-        ],
-        "seen": 67,
-        "total": 70
-      },
-      "clips[].reaction.updated_at": {
-        "types": [
-          "string"
-        ],
-        "seen": 67,
-        "total": 70
-      },
-      "clips[].project": {
-        "types": [
-          "object"
-        ],
-        "seen": 30,
-        "total": 70
-      },
-      "clips[].project.id": {
-        "types": [
-          "string"
-        ],
-        "seen": 30,
-        "total": 70
-      },
-      "clips[].project.name": {
-        "types": [
-          "string"
-        ],
-        "seen": 30,
-        "total": 70
-      },
-      "clips[].project.description": {
-        "types": [
-          "string"
-        ],
-        "seen": 30,
-        "total": 70
-      },
-      "clips[].project.is_trashed": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 30,
-        "total": 70
-      },
-      "clips[].project.is_public": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 30,
-        "total": 70
+        "seen": 77,
+        "total": 77
       },
       "clips[].metadata.negative_tags": {
         "types": [
           "string"
         ],
-        "seen": 26,
-        "total": 70
+        "seen": 10,
+        "total": 77
+      },
+      "clips[].metadata.prompt": {
+        "types": [
+          "string"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.type": {
+        "types": [
+          "string"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.duration": {
+        "types": [
+          "number"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.refund_credits": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 74,
+        "total": 77
+      },
+      "clips[].metadata.stream": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 74,
+        "total": 77
+      },
+      "clips[].metadata.make_instrumental": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 74,
+        "total": 77
+      },
+      "clips[].metadata.is_max_mode": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 12,
+        "total": 77
       },
       "clips[].metadata.control_sliders": {
         "types": [
           "object"
         ],
-        "seen": 8,
-        "total": 70
-      },
-      "clips[].metadata.control_sliders.weirdness_constraint": {
-        "types": [
-          "number"
-        ],
-        "seen": 2,
-        "total": 70
+        "seen": 26,
+        "total": 77
       },
       "clips[].metadata.control_sliders.style_weight": {
         "types": [
           "number"
         ],
+        "seen": 12,
+        "total": 77
+      },
+      "clips[].metadata.control_sliders.weirdness_constraint": {
+        "types": [
+          "number"
+        ],
         "seen": 6,
-        "total": 70
+        "total": 77
+      },
+      "clips[].metadata.control_sliders.aug_creativity": {
+        "types": [
+          "number"
+        ],
+        "seen": 26,
+        "total": 77
+      },
+      "clips[].metadata.vox_render_mode": {
+        "types": [
+          "string"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.can_remix": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.is_remix": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.priority": {
+        "types": [
+          "number"
+        ],
+        "seen": 74,
+        "total": 77
+      },
+      "clips[].metadata.has_stem": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.video_is_stale": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 5,
+        "total": 77
+      },
+      "clips[].metadata.uses_latest_model": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.model_badges": {
+        "types": [
+          "object"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songcard": {
+        "types": [
+          "object"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songcard.display_name": {
+        "types": [
+          "string"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songcard.light": {
+        "types": [
+          "object"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songcard.light.text_color": {
+        "types": [
+          "string"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songcard.light.background_color": {
+        "types": [
+          "string"
+        ],
+        "seen": 26,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songcard.light.border_color": {
+        "types": [
+          "string"
+        ],
+        "seen": 26,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songcard.dark": {
+        "types": [
+          "object"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songcard.dark.text_color": {
+        "types": [
+          "string"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songcard.dark.background_color": {
+        "types": [
+          "string"
+        ],
+        "seen": 26,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songcard.dark.border_color": {
+        "types": [
+          "string"
+        ],
+        "seen": 26,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songrow": {
+        "types": [
+          "object"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songrow.display_name": {
+        "types": [
+          "string"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songrow.light": {
+        "types": [
+          "object"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songrow.light.text_color": {
+        "types": [
+          "string"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songrow.light.text_color_gradient": {
+        "types": [
+          "array"
+        ],
+        "seen": 26,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songrow.light.text_color_gradient[]": {
+        "types": [
+          "string"
+        ],
+        "seen": 52,
+        "total": 52
+      },
+      "clips[].metadata.model_badges.songrow.dark": {
+        "types": [
+          "object"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songrow.dark.text_color": {
+        "types": [
+          "string"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songrow.dark.text_color_gradient": {
+        "types": [
+          "array"
+        ],
+        "seen": 26,
+        "total": 77
+      },
+      "clips[].metadata.model_badges.songrow.dark.text_color_gradient[]": {
+        "types": [
+          "string"
+        ],
+        "seen": 52,
+        "total": 52
+      },
+      "clips[].metadata.image_config": {
+        "types": [
+          "object"
+        ],
+        "seen": 74,
+        "total": 77
+      },
+      "clips[].metadata.image_config.use_image_config_template": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 74,
+        "total": 77
+      },
+      "clips[].metadata.image_config.id": {
+        "types": [
+          "string"
+        ],
+        "seen": 74,
+        "total": 77
+      },
+      "clips[].metadata.image_config.default_cover_style": {
+        "types": [
+          "string"
+        ],
+        "seen": 74,
+        "total": 77
+      },
+      "clips[].metadata.is_mumble": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 74,
+        "total": 77
+      },
+      "clips[].is_liked": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].user_id": {
+        "types": [
+          "string"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].display_name": {
+        "types": [
+          "string"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].handle": {
+        "types": [
+          "string"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].is_handle_updated": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].avatar_image_url": {
+        "types": [
+          "string"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].is_trashed": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].is_hidden": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].created_at": {
+        "types": [
+          "string"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].is_public": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].reaction": {
+        "types": [
+          "object"
+        ],
+        "seen": 60,
+        "total": 77
+      },
+      "clips[].reaction.play_count": {
+        "types": [
+          "number"
+        ],
+        "seen": 60,
+        "total": 77
+      },
+      "clips[].reaction.skip_count": {
+        "types": [
+          "number"
+        ],
+        "seen": 60,
+        "total": 77
+      },
+      "clips[].reaction.flagged": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 60,
+        "total": 77
+      },
+      "clips[].reaction.clip": {
+        "types": [
+          "string"
+        ],
+        "seen": 60,
+        "total": 77
+      },
+      "clips[].reaction.updated_at": {
+        "types": [
+          "string"
+        ],
+        "seen": 60,
+        "total": 77
+      },
+      "clips[].is_persona_root": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].is_following_creator": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].albums": {
+        "types": [
+          "array"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].ownership": {
+        "types": [
+          "object"
+        ],
+        "seen": 51,
+        "total": 77
+      },
+      "clips[].ownership.ownership_reason": {
+        "types": [
+          "string"
+        ],
+        "seen": 51,
+        "total": 77
+      },
+      "clips[].explicit": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 74,
+        "total": 77
+      },
+      "clips[].comment_count": {
+        "types": [
+          "number"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].flag_count": {
+        "types": [
+          "number"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].display_tags": {
+        "types": [
+          "string"
+        ],
+        "seen": 37,
+        "total": 77
+      },
+      "clips[].is_download_unlocked": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].download_unlocked_at": {
+        "types": [
+          "string"
+        ],
+        "seen": 2,
+        "total": 77
+      },
+      "clips[].is_contest_clip": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].has_hook": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].batch_index": {
+        "types": [
+          "number"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].action_config": {
+        "types": [
+          "object"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].action_config.actions": {
+        "types": [
+          "array"
+        ],
+        "seen": 77,
+        "total": 77
+      },
+      "clips[].action_config.actions[]": {
+        "types": [
+          "object"
+        ],
+        "seen": 1469,
+        "total": 1469
+      },
+      "clips[].action_config.actions[].action_type": {
+        "types": [
+          "string"
+        ],
+        "seen": 1469,
+        "total": 1469
+      },
+      "clips[].action_config.actions[].disabled": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 1469,
+        "total": 1469
+      },
+      "clips[].action_config.actions[].visible": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 1469,
+        "total": 1469
+      },
+      "clips[].metadata.gpt_description_prompt": {
+        "types": [
+          "string"
+        ],
+        "seen": 16,
+        "total": 77
+      },
+      "clips[].metadata.task": {
+        "types": [
+          "string"
+        ],
+        "seen": 16,
+        "total": 77
+      },
+      "clips[].metadata.show_remix": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 8,
+        "total": 77
+      },
+      "next_cursor": {
+        "types": [
+          "string"
+        ],
+        "seen": 3,
+        "total": 4
+      },
+      "has_more": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 4,
+        "total": 4
+      },
+      "clips[].metadata.max_bpm": {
+        "types": [
+          "number"
+        ],
+        "seen": 28,
+        "total": 57
+      },
+      "clips[].metadata.min_bpm": {
+        "types": [
+          "number"
+        ],
+        "seen": 28,
+        "total": 57
+      },
+      "clips[].metadata.avg_bpm": {
+        "types": [
+          "number"
+        ],
+        "seen": 28,
+        "total": 57
+      },
+      "clips[].metadata.key": {
+        "types": [
+          "string"
+        ],
+        "seen": 28,
+        "total": 57
+      },
+      "clips[].metadata.concat_history": {
+        "types": [
+          "array"
+        ],
+        "seen": 3,
+        "total": 57
+      },
+      "clips[].metadata.concat_history[]": {
+        "types": [
+          "object"
+        ],
+        "seen": 6,
+        "total": 6
+      },
+      "clips[].metadata.concat_history[].infill": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 3,
+        "total": 6
+      },
+      "clips[].metadata.concat_history[].id": {
+        "types": [
+          "string"
+        ],
+        "seen": 6,
+        "total": 6
+      },
+      "clips[].metadata.concat_history[].source": {
+        "types": [
+          "string"
+        ],
+        "seen": 3,
+        "total": 6
+      },
+      "clips[].metadata.concat_history[].type": {
+        "types": [
+          "string"
+        ],
+        "seen": 3,
+        "total": 6
+      },
+      "clips[].metadata.concat_history[].continue_at": {
+        "types": [
+          "number"
+        ],
+        "seen": 3,
+        "total": 6
+      },
+      "clips[].metadata.can_publish_with_vocal": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 3,
+        "total": 57
+      },
+      "clips[].metadata.secondary_badges": {
+        "types": [
+          "array"
+        ],
+        "seen": 11,
+        "total": 57
+      },
+      "clips[].metadata.secondary_badges[]": {
+        "types": [
+          "object"
+        ],
+        "seen": 11,
+        "total": 11
+      },
+      "clips[].metadata.secondary_badges[].display_name": {
+        "types": [
+          "string"
+        ],
+        "seen": 11,
+        "total": 11
+      },
+      "clips[].metadata.secondary_badges[].icon_key": {
+        "types": [
+          "string"
+        ],
+        "seen": 11,
+        "total": 11
+      },
+      "clips[].metadata.secondary_badges[].light": {
+        "types": [
+          "object"
+        ],
+        "seen": 11,
+        "total": 11
+      },
+      "clips[].metadata.secondary_badges[].light.text_color": {
+        "types": [
+          "string"
+        ],
+        "seen": 11,
+        "total": 11
+      },
+      "clips[].metadata.secondary_badges[].dark": {
+        "types": [
+          "object"
+        ],
+        "seen": 11,
+        "total": 11
+      },
+      "clips[].metadata.secondary_badges[].dark.text_color": {
+        "types": [
+          "string"
+        ],
+        "seen": 11,
+        "total": 11
+      },
+      "clips[].clip_roots": {
+        "types": [
+          "object"
+        ],
+        "seen": 11,
+        "total": 57
+      },
+      "clips[].clip_roots.clips": {
+        "types": [
+          "array"
+        ],
+        "seen": 11,
+        "total": 57
+      },
+      "clips[].clip_roots.clips[]": {
+        "types": [
+          "object"
+        ],
+        "seen": 11,
+        "total": 11
+      },
+      "clips[].clip_roots.clips[].id": {
+        "types": [
+          "string"
+        ],
+        "seen": 11,
+        "total": 11
+      },
+      "clips[].clip_roots.clips[].title": {
+        "types": [
+          "string"
+        ],
+        "seen": 11,
+        "total": 11
+      },
+      "clips[].clip_roots.clips[].image_url": {
+        "types": [
+          "string"
+        ],
+        "seen": 11,
+        "total": 11
+      },
+      "clips[].clip_roots.clips[].is_public": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 11,
+        "total": 11
+      },
+      "clips[].clip_roots.clips[].user_display_name": {
+        "types": [
+          "string"
+        ],
+        "seen": 11,
+        "total": 11
+      },
+      "clips[].clip_roots.clips[].user_handle": {
+        "types": [
+          "string"
+        ],
+        "seen": 11,
+        "total": 11
+      },
+      "clips[].clip_roots.clips[].user_avatar_image_url": {
+        "types": [
+          "string"
+        ],
+        "seen": 11,
+        "total": 11
+      },
+      "clips[].clip_roots.clip_attribution_type": {
+        "types": [
+          "string"
+        ],
+        "seen": 11,
+        "total": 57
+      },
+      "clips[].metadata.history": {
+        "types": [
+          "array"
+        ],
+        "seen": 8,
+        "total": 57
+      },
+      "clips[].metadata.history[]": {
+        "types": [
+          "object"
+        ],
+        "seen": 8,
+        "total": 8
+      },
+      "clips[].metadata.history[].infill": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 8,
+        "total": 8
+      },
+      "clips[].metadata.history[].id": {
+        "types": [
+          "string"
+        ],
+        "seen": 8,
+        "total": 8
+      },
+      "clips[].metadata.history[].source": {
+        "types": [
+          "string"
+        ],
+        "seen": 8,
+        "total": 8
+      },
+      "clips[].metadata.history[].type": {
+        "types": [
+          "string"
+        ],
+        "seen": 8,
+        "total": 8
+      },
+      "clips[].metadata.history[].continue_at": {
+        "types": [
+          "number"
+        ],
+        "seen": 8,
+        "total": 8
+      },
+      "clips[].metadata.edited_clip_id": {
+        "types": [
+          "string"
+        ],
+        "seen": 8,
+        "total": 57
+      },
+      "clips[].metadata.continue_at": {
+        "types": [
+          "number"
+        ],
+        "seen": 8,
+        "total": 57
+      },
+      "clips[].metadata.lyrics_updated": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 34,
+        "total": 57
+      },
+      "clips[].metadata.infill": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 8,
+        "total": 57
       },
       "clips[].reaction.reaction_type": {
         "types": [
           "string"
         ],
-        "seen": 3,
-        "total": 70
+        "seen": 1,
+        "total": 37
       }
     },
-    "recordedAt": "2026-08-16T23:32:09.031Z"
+    "recordedAt": "2026-09-10T14:42:23.561Z"
   },
   {
     "endpoint": "lyrics.aligned",
@@ -2520,6 +2933,48 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "seen": 5,
         "total": 5
       },
+      "aligned_words[]": {
+        "types": [
+          "object"
+        ],
+        "seen": 519,
+        "total": 519
+      },
+      "aligned_words[].word": {
+        "types": [
+          "string"
+        ],
+        "seen": 519,
+        "total": 519
+      },
+      "aligned_words[].success": {
+        "types": [
+          "boolean"
+        ],
+        "seen": 519,
+        "total": 519
+      },
+      "aligned_words[].start_s": {
+        "types": [
+          "number"
+        ],
+        "seen": 519,
+        "total": 519
+      },
+      "aligned_words[].end_s": {
+        "types": [
+          "number"
+        ],
+        "seen": 519,
+        "total": 519
+      },
+      "aligned_words[].p_align": {
+        "types": [
+          "number"
+        ],
+        "seen": 519,
+        "total": 519
+      },
       "waveform_data": {
         "types": [
           "array"
@@ -2531,8 +2986,8 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "types": [
           "number"
         ],
-        "seen": 2149,
-        "total": 2149
+        "seen": 4138,
+        "total": 4138
       },
       "hoot_cer": {
         "types": [
@@ -2555,120 +3010,78 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "seen": 5,
         "total": 5
       },
-      "aligned_words[]": {
-        "types": [
-          "object"
-        ],
-        "seen": 3,
-        "total": 3
-      },
-      "aligned_words[].word": {
-        "types": [
-          "string"
-        ],
-        "seen": 3,
-        "total": 3
-      },
-      "aligned_words[].success": {
-        "types": [
-          "boolean"
-        ],
-        "seen": 3,
-        "total": 3
-      },
-      "aligned_words[].start_s": {
-        "types": [
-          "number"
-        ],
-        "seen": 3,
-        "total": 3
-      },
-      "aligned_words[].end_s": {
-        "types": [
-          "number"
-        ],
-        "seen": 3,
-        "total": 3
-      },
-      "aligned_words[].p_align": {
-        "types": [
-          "number"
-        ],
-        "seen": 3,
-        "total": 3
-      },
       "aligned_lyrics[]": {
         "types": [
           "object"
         ],
-        "seen": 3,
-        "total": 3
+        "seen": 88,
+        "total": 88
       },
       "aligned_lyrics[].text": {
         "types": [
           "string"
         ],
-        "seen": 3,
-        "total": 3
+        "seen": 88,
+        "total": 88
       },
       "aligned_lyrics[].start_s": {
         "types": [
           "number"
         ],
-        "seen": 3,
-        "total": 3
+        "seen": 88,
+        "total": 88
       },
       "aligned_lyrics[].end_s": {
         "types": [
           "number"
         ],
-        "seen": 3,
-        "total": 3
+        "seen": 88,
+        "total": 88
       },
       "aligned_lyrics[].section": {
         "types": [
           "string"
         ],
-        "seen": 3,
-        "total": 3
+        "seen": 88,
+        "total": 88
       },
       "aligned_lyrics[].words": {
         "types": [
           "array"
         ],
-        "seen": 3,
-        "total": 3
+        "seen": 88,
+        "total": 88
       },
       "aligned_lyrics[].words[]": {
         "types": [
           "object"
         ],
-        "seen": 9,
-        "total": 9
+        "seen": 769,
+        "total": 769
       },
       "aligned_lyrics[].words[].text": {
         "types": [
           "string"
         ],
-        "seen": 9,
-        "total": 9
+        "seen": 769,
+        "total": 769
       },
       "aligned_lyrics[].words[].start_s": {
         "types": [
           "number"
         ],
-        "seen": 9,
-        "total": 9
+        "seen": 769,
+        "total": 769
       },
       "aligned_lyrics[].words[].end_s": {
         "types": [
           "number"
         ],
-        "seen": 9,
-        "total": 9
+        "seen": 769,
+        "total": 769
       }
     },
-    "recordedAt": "2026-08-16T23:32:09.031Z"
+    "recordedAt": "2026-09-10T14:42:23.561Z"
   },
   {
     "endpoint": "lyrics.result",
@@ -2717,7 +3130,7 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "total": 8
       }
     },
-    "recordedAt": "2026-08-16T23:32:09.031Z"
+    "recordedAt": "2026-09-10T14:42:23.561Z"
   },
   {
     "endpoint": "lyrics.submit",
@@ -2731,6 +3144,6 @@ export const BUNDLED_BASELINES: readonly Baseline[] = [
         "total": 4
       }
     },
-    "recordedAt": "2026-08-16T23:32:09.031Z"
+    "recordedAt": "2026-09-10T14:42:23.561Z"
   }
 ] as const satisfies readonly Baseline[];

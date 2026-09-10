@@ -173,9 +173,40 @@ npm install
 cp .env.example .env    # then paste your __client cookie
 ```
 
-Get the cookie: log into suno.com, devtools, Application, Cookies, `suno.com`,
-copy `__client`. It lasts about 7 days. A full `Cookie:` header pasted whole
-works too.
+### Getting a session, and getting it back
+
+If you are signed in to Suno in a local Chrome, Brave, Edge or Chromium, take
+the session straight from it and skip the devtools dance entirely:
+
+```bash
+suno-client login --from-browser
+```
+
+It searches every profile, prints which one it used, and prefers the cookie
+that expires last when the account is open in more than one. macOS raises a
+Keychain prompt, because reading the browser's cookie key is exactly the kind
+of thing an operating system should ask about; approving it once is the whole
+interaction. Narrow it with `--browser chrome` or `--profile Default`.
+
+The manual route still works, and is the only one on Windows: log into
+suno.com, devtools, Application, Cookies, **`auth.suno.com`** (not `suno.com` —
+Clerk serves it from the auth subdomain), copy `__client`, then
+`suno-client login --stdin`. A full `Cookie:` header pasted whole works too.
+
+The cookie is good for about a **year**, not the week this README claimed until
+2026-09-10 — measured at 2027-09-09 on a profile signed in that day. Which
+reframes what a dead session usually is: not an expired cookie, but one that was
+rotated by signing in again elsewhere, or one that was never stored. Before
+re-logging in, ask what state you are actually in:
+
+```bash
+suno-client session
+```
+
+It reports whether a session is stored, when its JWT expires, whether the next
+call will refresh it, and whether Suno answers right now — without printing the
+cookie or the token. Four different problems look identical from the outside,
+and re-logging in fixes only one of them.
 
 ## Running things
 

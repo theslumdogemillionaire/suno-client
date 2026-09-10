@@ -7,6 +7,14 @@
 import { readFileSync } from 'node:fs';
 
 import { Suno } from './suno.js';
+import {
+  BROWSER_NAMES,
+  findSessionCookies,
+  preferLongestLived,
+  type BrowserName,
+} from './browser-cookie.js';
+import { decodeJwtClaims } from './auth.js';
+import { FileAuthStore, defaultAuthPath } from './store.js';
 import { SunoError } from './errors.js';
 import { formatDriftReport } from './drift/detect.js';
 import { registryFromBaselines } from './drift/registry.js';
@@ -14,6 +22,9 @@ import { registryFromBaselines } from './drift/registry.js';
 const USAGE = `suno-client <command>
 
   login [--stdin]      store a session from SUNO_COOKIE, a file, or stdin
+  login --from-browser lift the session straight out of a local browser
+                       [--browser chrome|brave|edge|chromium] [--profile Default]
+  session              is the stored session alive, and until when
   logout               forget the stored session
   account              tier, plan, credits, unlocked features, usable models
   credits              plan and remaining credits
@@ -49,6 +60,122 @@ function out(value: unknown): void {
   console.log(typeof value === 'string' ? value : JSON.stringify(value, null, 2));
 }
 
+/**
+ * The session cookie, taken from a browser on this machine.
+ *
+ * Deliberately chatty about WHERE it found the thing. A machine with the
+ * account open in two Chrome profiles has two valid cookies, and a command that
+ * silently picked one would eventually sign a bot in as the wrong account
+ * without a word — so the choice is printed, on stderr so that piping stdout
+ * still works.
+ */
+async function cookieFromBrowser(): Promise<string> {
+  const requested = arg('browser');
+  if (requested !== undefined && !BROWSER_NAMES.includes(requested as BrowserName)) {
+    throw new SunoError({
+      code: 'invalid_input',
+      message: `unknown browser ${JSON.stringify(requested)}; try one of ${BROWSER_NAMES.join(', ')}`,
+    });
+  }
+  const profile = arg('profile');
+  console.error('[login] reading the browser cookie store; macOS will ask for Keychain permission.');
+
+  const found = await findSessionCookies({
+    ...(requested ? { browsers: [requested as BrowserName] } : {}),
+    ...(profile !== undefined ? { profile } : {}),
+  });
+  if (found.length === 0) {
+    throw new SunoError({
+      code: 'auth_missing',
+      message:
+        'no Suno session found in any local browser profile. Sign in at https://suno.com in ' +
+        'Chrome, Brave, Edge or Chromium and run this again — or paste the cookie: ' +
+        'suno-client login --stdin',
+    });
+  }
+  const chosen = preferLongestLived(found);
+  if (chosen === undefined) throw new SunoError({ code: 'auth_missing', message: 'no usable cookie' });
+
+  if (found.length > 1) {
+    const others = found
+      .filter((c) => c !== chosen)
+      .map((c) => `${c.browser}/${c.profile}`)
+      .join(', ');
+    console.error(`[login] ${found.length} sessions found (${others}); using the one that expires last.`);
+  }
+  const until = chosen.expiresAt ? ` (valid until ${chosen.expiresAt.toISOString().slice(0, 10)})` : '';
+  console.error(`[login] using ${chosen.browser}/${chosen.profile}${until}.`);
+  return chosen.value;
+}
+
+/**
+ * What state the stored session is in, without spending a generation to find
+ * out.
+ *
+ * This exists because "suno déconne" has at least four distinct causes that
+ * look identical from the outside — no session stored, a cookie that was
+ * rotated elsewhere, a JWT that is merely stale, and Suno having changed
+ * something underneath — and the first move was always to re-login, which fixes
+ * exactly one of them and wastes time on the other three.
+ *
+ * Never prints the cookie or the token. Lengths, prefixes and timestamps say
+ * everything a diagnosis needs and nothing a leaked terminal buffer could use.
+ */
+async function describeSession(suno: Suno): Promise<unknown> {
+  const path = defaultAuthPath();
+  const stored = await new FileAuthStore(path).load();
+  if (stored === undefined) {
+    return {
+      file: path,
+      stored: false,
+      advice: 'no session stored. Run: suno-client login --from-browser',
+    };
+  }
+
+  const claims = stored.jwt ? decodeJwtClaims(stored.jwt) : undefined;
+  const expSeconds = typeof claims?.exp === 'number' ? claims.exp : undefined;
+  const expiresAt = expSeconds === undefined ? undefined : new Date(expSeconds * 1000);
+  const secondsLeft = expSeconds === undefined ? undefined : Math.round(expSeconds - Date.now() / 1000);
+
+  // The token can be inside its exp and still be refused. Suno's generate
+  // endpoint starts rejecting one about half an hour in, which is why the
+  // client refreshes on a margin rather than on expiry — reporting "valid"
+  // purely on exp would contradict what the caller is about to experience.
+  const staleness = secondsLeft === undefined ? undefined : secondsLeft < 1800;
+
+  let live: unknown;
+  try {
+    const c = await suno.credits();
+    live = { reachable: true, plan: c.plan, tier: c.tier, credits: c.left };
+  } catch (err) {
+    live =
+      err instanceof SunoError
+        ? { reachable: false, code: err.code, alert: err.alert, message: err.message }
+        : { reachable: false, message: err instanceof Error ? err.message : String(err) };
+  }
+
+  return {
+    file: path,
+    stored: true,
+    cookieLength: stored.clerkClientCookie.length,
+    sessionId: stored.sessionId ?? null,
+    deviceId: stored.deviceId ?? null,
+    jwt:
+      stored.jwt === undefined
+        ? null
+        : {
+            expiresAt: expiresAt?.toISOString() ?? null,
+            secondsLeft: secondsLeft ?? null,
+            refreshedOnNextCall: staleness ?? null,
+          },
+    live,
+    advice:
+      typeof live === 'object' && live !== null && (live as { reachable?: boolean }).reachable
+        ? 'session is healthy; nothing to do.'
+        : 'session did not answer. Re-take it with: suno-client login --from-browser',
+  };
+}
+
 async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
   const cookie = process.env['SUNO_COOKIE'];
@@ -68,11 +195,28 @@ async function main(): Promise<void> {
       return;
 
     case 'login': {
-      const value = flag('stdin') ? await readStdin() : (cookie ?? '');
-      if (value === '') throw new SunoError({ code: 'invalid_input', message: 'no cookie: set SUNO_COOKIE or pass --stdin' });
+      let value: string;
+      if (flag('from-browser')) {
+        value = await cookieFromBrowser();
+      } else if (flag('stdin')) {
+        value = await readStdin();
+      } else {
+        value = cookie ?? '';
+      }
+      if (value === '') {
+        throw new SunoError({
+          code: 'invalid_input',
+          message: 'no cookie: set SUNO_COOKIE, pass --stdin, or use --from-browser',
+        });
+      }
       await suno.login(value);
       const c = await suno.credits();
       out(`signed in: ${c.plan} (${c.tier}), ${c.left} credits`);
+      return;
+    }
+
+    case 'session': {
+      out(await describeSession(suno));
       return;
     }
 
@@ -105,7 +249,14 @@ async function main(): Promise<void> {
       return;
 
     case 'list': {
+      // Number('--limit') is NaN, JSON.stringify turns that into null, and Suno
+      // answers 422 — which the client reports as schema_drift with alert set,
+      // i.e. the loudest error in the taxonomy, raised by a typo. `list` takes a
+      // bare count, so anything unparseable is a mistake, not a smaller page.
       const limit = Number(rest[0] ?? 20);
+      if (!Number.isFinite(limit) || limit <= 0) {
+        throw new Error(`list takes a count, got ${JSON.stringify(rest[0])}`);
+      }
       const page = await suno.list({ limit });
       out(page.clips.map((c) => ({ id: c.id, title: c.title, status: c.status, created: c.created_at })));
       return;

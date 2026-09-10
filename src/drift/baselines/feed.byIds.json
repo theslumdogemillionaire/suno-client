@@ -90,36 +90,36 @@
       "types": [
         "object"
       ],
-      "seen": 10,
-      "total": 10
+      "seen": 5,
+      "total": 5
     },
     "[].media_urls[].url": {
       "types": [
         "string"
       ],
-      "seen": 10,
-      "total": 10
+      "seen": 5,
+      "total": 5
     },
     "[].media_urls[].content_type": {
       "types": [
         "string"
       ],
-      "seen": 10,
-      "total": 10
+      "seen": 5,
+      "total": 5
     },
     "[].media_urls[].delivery": {
       "types": [
         "string"
       ],
-      "seen": 10,
-      "total": 10
+      "seen": 5,
+      "total": 5
     },
     "[].media_urls[].encoding": {
       "types": [
         "string"
       ],
       "seen": 5,
-      "total": 10
+      "total": 5
     },
     "[].image_url": {
       "types": [
@@ -161,6 +161,13 @@
         "string"
       ],
       "seen": 5,
+      "total": 5
+    },
+    "[].metadata.negative_tags": {
+      "types": [
+        "string"
+      ],
+      "seen": 3,
       "total": 5
     },
     "[].metadata.prompt": {
@@ -205,6 +212,48 @@
       "seen": 5,
       "total": 5
     },
+    "[].metadata.is_max_mode": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 3,
+      "total": 5
+    },
+    "[].metadata.control_sliders": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.control_sliders.style_weight": {
+      "types": [
+        "number"
+      ],
+      "seen": 3,
+      "total": 5
+    },
+    "[].metadata.control_sliders.weirdness_constraint": {
+      "types": [
+        "number"
+      ],
+      "seen": 3,
+      "total": 5
+    },
+    "[].metadata.control_sliders.aug_creativity": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].metadata.vox_render_mode": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
     "[].metadata.can_remix": {
       "types": [
         "boolean"
@@ -231,6 +280,13 @@
         "boolean"
       ],
       "seen": 5,
+      "total": 5
+    },
+    "[].metadata.video_is_stale": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 2,
       "total": 5
     },
     "[].metadata.uses_latest_model": {
@@ -345,19 +401,19 @@
       "seen": 5,
       "total": 5
     },
-    "[].metadata.model_badges.songrow.light.background_color": {
+    "[].metadata.model_badges.songrow.light.text_color_gradient": {
       "types": [
-        "string"
+        "array"
       ],
       "seen": 5,
       "total": 5
     },
-    "[].metadata.model_badges.songrow.light.border_color": {
+    "[].metadata.model_badges.songrow.light.text_color_gradient[]": {
       "types": [
         "string"
       ],
-      "seen": 5,
-      "total": 5
+      "seen": 10,
+      "total": 10
     },
     "[].metadata.model_badges.songrow.dark": {
       "types": [
@@ -373,19 +429,19 @@
       "seen": 5,
       "total": 5
     },
-    "[].metadata.model_badges.songrow.dark.background_color": {
+    "[].metadata.model_badges.songrow.dark.text_color_gradient": {
       "types": [
-        "string"
+        "array"
       ],
       "seen": 5,
       "total": 5
     },
-    "[].metadata.model_badges.songrow.dark.border_color": {
+    "[].metadata.model_badges.songrow.dark.text_color_gradient[]": {
       "types": [
         "string"
       ],
-      "seen": 5,
-      "total": 5
+      "seen": 10,
+      "total": 10
     },
     "[].metadata.image_config": {
       "types": [
@@ -492,6 +548,48 @@
       "seen": 5,
       "total": 5
     },
+    "[].reaction": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].reaction.play_count": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].reaction.skip_count": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].reaction.flagged": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].reaction.clip": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].reaction.updated_at": {
+      "types": [
+        "string"
+      ],
+      "seen": 5,
+      "total": 5
+    },
     "[].is_persona_root": {
       "types": [
         "boolean"
@@ -527,6 +625,13 @@
       "seen": 5,
       "total": 5
     },
+    "[].explicit": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
     "[].comment_count": {
       "types": [
         "number"
@@ -539,6 +644,27 @@
         "number"
       ],
       "seen": 5,
+      "total": 5
+    },
+    "[].display_tags": {
+      "types": [
+        "string"
+      ],
+      "seen": 4,
+      "total": 5
+    },
+    "[].is_download_unlocked": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "[].download_unlocked_at": {
+      "types": [
+        "string"
+      ],
+      "seen": 2,
       "total": 5
     },
     "[].is_contest_clip": {
@@ -580,31 +706,45 @@
       "types": [
         "object"
       ],
-      "seen": 85,
-      "total": 85
+      "seen": 98,
+      "total": 98
     },
     "[].action_config.actions[].action_type": {
       "types": [
         "string"
       ],
-      "seen": 85,
-      "total": 85
+      "seen": 98,
+      "total": 98
     },
     "[].action_config.actions[].disabled": {
       "types": [
         "boolean"
       ],
-      "seen": 85,
-      "total": 85
+      "seen": 98,
+      "total": 98
     },
     "[].action_config.actions[].visible": {
       "types": [
         "boolean"
       ],
-      "seen": 85,
-      "total": 85
+      "seen": 98,
+      "total": 98
     },
-    "[].explicit": {
+    "[].metadata.gpt_description_prompt": {
+      "types": [
+        "string"
+      ],
+      "seen": 2,
+      "total": 3
+    },
+    "[].metadata.task": {
+      "types": [
+        "string"
+      ],
+      "seen": 2,
+      "total": 3
+    },
+    "[].metadata.show_remix": {
       "types": [
         "boolean"
       ],
@@ -612,5 +752,5 @@
       "total": 3
     }
   },
-  "recordedAt": "2026-08-16T23:32:09.031Z"
+  "recordedAt": "2026-09-10T14:42:23.561Z"
 }

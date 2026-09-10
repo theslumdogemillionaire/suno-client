@@ -71,6 +71,16 @@ export {
   type AuthState,
 } from './auth.js';
 
+export {
+  BROWSER_NAMES,
+  SESSION_COOKIE_HOST,
+  SESSION_COOKIE_NAME,
+  findSessionCookies,
+  preferLongestLived,
+  type BrowserName,
+  type FindCookieOptions,
+  type FoundCookie,
+} from './browser-cookie.js';
 export { FileAuthStore, MemoryAuthStore, defaultAuthPath, type AuthStore } from './store.js';
 
 export {
@@ -91,13 +101,16 @@ export {
 export { CONSUMED_PATHS, loadBaselines, registryFromBaselines, registryFromMap } from './drift/registry.js';
 
 export {
+  AUDIO_FORBIDDEN_URL,
   BillingInfoSchema,
   ClipSchema,
   ClipStatus,
   FeedPageSchema,
   GenerateResponseSchema,
   LyricsResultSchema,
+  MediaUrlSchema,
   TERMINAL_STATUSES,
+  isFetchableUrl,
   isTerminal,
   type AlignedWord,
   type BillingInfo,
@@ -105,6 +118,7 @@ export {
   type Clip,
   type FeedPage,
   type LyricsResult,
+  type MediaUrl,
   type Model,
   type PersonaInfo,
   type Plan,

@@ -105,6 +105,60 @@ not a clip object. `requestStems` therefore returns the raw payload plus any
 clips it could parse. The stems appear in the feed within a minute as
 `<title> - Vocals` and `<title> - Instrumental` and download normally.
 
+## Downloads became metered, and `audio_url` became a trap (2026-09-10)
+
+Suno moved audio delivery off `audio_url` and put it behind a per-clip unlock
+that costs one of a small monthly allowance. Three things changed at once, and
+each one alone would be survivable; together they break every client that
+assumed a finished clip is a downloadable clip.
+
+**`audio_url` now holds a sentinel.** Every clip returns
+`https://studio-api.prod.suno.com/api/forbidden`, which answers 403. This is
+retroactive: clips generated in August, already downloaded successfully at the
+time, carry it too. Measured across a 50-clip feed page — 50 of 50, all
+`complete`, no exceptions.
+
+The sentinel is a non-empty string, and that is the whole problem. Every
+`Boolean(clip.audio_url)` and `url !== ''` guard written before this date still
+passes, on every clip, so the failure moves from a clean "not ready yet" to a
+403 at fetch time with nothing explaining it. Use `isFetchableUrl` rather than
+truthiness.
+
+**`media_urls` is not the replacement.** It looks exactly like one: public,
+unauthenticated, HTTP 200, `content-type: audio/mp4`, plausible file size, one
+entry per clip (`m4a-opus` / `progressive` / `1.0.0` on all 50). The payload is
+encrypted. It measures 7.997 bits per byte from first block to last and
+contains no `ftyp`, no `moov`, no container magic anywhere; ffmpeg rejects it
+with "moov atom not found". It is typed in `ClipSchema` so the drift detector
+stays quiet about it, and for no other reason.
+
+Worth knowing that the CloudFront objects carry a `Last-Modified` minutes old
+and an `x-amz-expiration` about a month out — the library is being re-encoded
+continuously, so an object that worked once is not evidence about the next one.
+
+**Playable audio comes from `GET /api/download/clip/{id}?format=mp3`**, which
+returns `{ok, status, download_url}` with a presigned S3 URL, or
+`{ok: false, reason: "not_authorized"}` if the clip has not been unlocked.
+`format` accepts `mp3` (returned ready), and `wav`, `m4a`, `mp4` (answer
+`{status: "processing"}` and need polling). `flac`, `ogg` and `opus` are
+rejected as `invalid_format`. The mp3 is genuine: 44.8 s, 48 kHz stereo, cover
+art embedded as an APIC frame.
+
+**The unlock is what costs.** `POST /api/download/authorize`
+`{item_id, item_type: "clip"}` spends one download; `billing/info` reports the
+allowance under `download_usage`, and on a Pro plan it read
+`current_period_downloads_limit: 20` with `additional_download_remaining: 7`.
+Twenty per period is the number that matters for anything that downloads on a
+schedule — a bot that materialises every generated track exhausts it in a
+sitting. Unlocking is permanent per clip (`is_download_unlocked`,
+`download_unlocked_at`) and re-fetching an unlocked clip is free.
+
+Two measurements worth not repeating: a plain `GET` on a **locked** clip returns
+`not_authorized` and deducts nothing — verified against `download_usage` before
+and after — so a client can detect-and-skip without spending anything. And
+`downloadClip` deliberately does not fall back from `audio_url` to
+`media_urls`, because that fallback trades a clear error for a corrupt file.
+
 ## The captcha gate does block creates (measured 2026-08-18)
 
 `POST /api/c/check` returns `{required: false}` for accounts above Suno's trust

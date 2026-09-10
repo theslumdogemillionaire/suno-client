@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { clipFilename, toSyncedLyrics } from '../../src/download.js';
-import type { AlignedWord } from '../../src/schemas.js';
+import { clipFilename, downloadClip, toSyncedLyrics } from '../../src/download.js';
+import {
+  AUDIO_FORBIDDEN_URL,
+  ClipSchema,
+  isFetchableUrl,
+  type AlignedWord,
+  type Clip,
+} from '../../src/schemas.js';
 
 const ID = 'b1a2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d';
 const SHORT = 'b1a2c3d4';
@@ -151,5 +157,72 @@ describe('toSyncedLyrics', () => {
     const words: AlignedWord[] = [word('one', 1)];
     toSyncedLyrics(words);
     expect(words).toEqual([{ word: 'one', start_s: 1, end_s: 1.4 }]);
+  });
+});
+
+describe('the audio_url sentinel', () => {
+  const clip = (audio_url: string | null): Clip =>
+    ClipSchema.parse({
+      id: ID,
+      title: 'Paroles Ici',
+      status: 'complete',
+      model_name: 'chirp-hawk',
+      audio_url,
+      created_at: '2026-09-10T14:13:00.000Z',
+      media_urls: [
+        {
+          url: `https://d2lwuy8qc234o3.cloudfront.net/1/clip/${ID}.m4a`,
+          content_type: 'm4a-opus',
+          delivery: 'progressive',
+          encoding: '1.0.0',
+        },
+      ],
+    });
+
+  it('is not fetchable, even though it is a perfectly well-formed non-empty URL', () => {
+    expect(AUDIO_FORBIDDEN_URL).not.toBe('');
+    expect(Boolean(AUDIO_FORBIDDEN_URL)).toBe(true); // the trap, spelled out
+    expect(isFetchableUrl(AUDIO_FORBIDDEN_URL)).toBe(false);
+  });
+
+  it('is recognised wherever Suno moves the host, because only the path is matched', () => {
+    expect(isFetchableUrl('https://studio-api-prod.suno.com/api/forbidden')).toBe(false);
+    expect(isFetchableUrl('https://anything.example/api/forbidden')).toBe(false);
+  });
+
+  it('still passes real URLs, empty strings and nullish through correctly', () => {
+    expect(isFetchableUrl('https://cdn2.suno.ai/x.mp3')).toBe(true);
+    expect(isFetchableUrl('')).toBe(false);
+    expect(isFetchableUrl(null)).toBe(false);
+    expect(isFetchableUrl(undefined)).toBe(false);
+  });
+
+  it('does not let a forbidden url be mistaken for "still rendering"', async () => {
+    // The two cases carry different codes on purpose: one is a clip that needs a
+    // paid unlock, the other is a clip that is not finished. Collapsing them
+    // sends a caller to wait for something that will never arrive.
+    await expect(
+      downloadClip({} as never, clip(AUDIO_FORBIDDEN_URL), { outputDir: '/tmp' }),
+    ).rejects.toMatchObject({ code: 'download_locked' });
+
+    await expect(
+      downloadClip({} as never, clip(null), { outputDir: '/tmp' }),
+    ).rejects.toMatchObject({ code: 'not_found' });
+  });
+
+  it('never falls back to media_urls, whose payload is encrypted', async () => {
+    const withMedia = clip(AUDIO_FORBIDDEN_URL);
+    expect(withMedia.media_urls?.[0]?.url).toContain('cloudfront.net');
+    // A fallback here would fetch 200 and write an unplayable file, which is
+    // strictly worse than failing.
+    await expect(
+      downloadClip({} as never, withMedia, { outputDir: '/tmp' }),
+    ).rejects.toMatchObject({ code: 'download_locked' });
+  });
+
+  it('keeps media_urls typed rather than passing it through untyped', () => {
+    const parsed = clip(AUDIO_FORBIDDEN_URL);
+    expect(parsed.media_urls).toHaveLength(1);
+    expect(parsed.media_urls?.[0]?.content_type).toBe('m4a-opus');
   });
 });

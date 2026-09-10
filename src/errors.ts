@@ -21,6 +21,12 @@ export type SunoErrorCode =
   | 'plan_required'
   | 'captcha_required'
   | 'insufficient_credits'
+  // Suno metered downloads on 2026-09-10. The clip exists and is finished; the
+  // account simply has not spent one of its per-period downloads on it. Neither
+  // retryable (waiting changes nothing) nor alert (a library of locked clips is
+  // the normal state, and 48 of 50 alerting would be noise): the caller skips
+  // the clip, or unlocks it and accepts the cost.
+  | 'download_locked'
   | 'rate_limited'
   | 'schema_drift'
   | 'route_gone'

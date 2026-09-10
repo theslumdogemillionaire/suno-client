@@ -58,13 +58,6 @@
       "seen": 5,
       "total": 5
     },
-    "cancel_on": {
-      "types": [
-        "string"
-      ],
-      "seen": 5,
-      "total": 5
-    },
     "period": {
       "types": [
         "string"
@@ -141,6 +134,48 @@
       ],
       "seen": 5,
       "total": 5
+    },
+    "download_credit_packs[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 20,
+      "total": 20
+    },
+    "download_credit_packs[].id": {
+      "types": [
+        "string"
+      ],
+      "seen": 20,
+      "total": 20
+    },
+    "download_credit_packs[].amount": {
+      "types": [
+        "number"
+      ],
+      "seen": 20,
+      "total": 20
+    },
+    "download_credit_packs[].price_usd": {
+      "types": [
+        "number"
+      ],
+      "seen": 20,
+      "total": 20
+    },
+    "download_credit_packs[].price_amount": {
+      "types": [
+        "string"
+      ],
+      "seen": 20,
+      "total": 20
+    },
+    "download_credit_packs[].price_currency_code": {
+      "types": [
+        "string"
+      ],
+      "seen": 20,
+      "total": 20
     },
     "plan": {
       "types": [
@@ -230,29 +265,29 @@
       "types": [
         "object"
       ],
-      "seen": 170,
-      "total": 170
+      "seen": 160,
+      "total": 160
     },
     "plan.prices[].period_type": {
       "types": [
         "string"
       ],
-      "seen": 170,
-      "total": 170
+      "seen": 160,
+      "total": 160
     },
     "plan.prices[].currency": {
       "types": [
         "string"
       ],
-      "seen": 170,
-      "total": 170
+      "seen": 160,
+      "total": 160
     },
     "plan.prices[].price": {
       "types": [
         "number"
       ],
-      "seen": 170,
-      "total": 170
+      "seen": 160,
+      "total": 160
     },
     "models": {
       "types": [
@@ -265,281 +300,281 @@
       "types": [
         "object"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].can_use": {
       "types": [
         "boolean"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].max_lengths": {
       "types": [
         "object"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].max_lengths.title": {
       "types": [
         "number"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].max_lengths.prompt": {
       "types": [
         "number"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].max_lengths.tags": {
       "types": [
         "number"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].max_lengths.negative_tags": {
       "types": [
         "number"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].max_lengths.gpt_description_prompt": {
       "types": [
         "number"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].name": {
       "types": [
         "string"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].external_key": {
       "types": [
         "string"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].major_version": {
       "types": [
         "number"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].description": {
       "types": [
         "string"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].is_default_free_model": {
       "types": [
         "boolean"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].is_default_model": {
       "types": [
         "boolean"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].badges": {
       "types": [
         "array"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].badges[]": {
       "types": [
         "string"
       ],
-      "seen": 25,
-      "total": 25
+      "seen": 10,
+      "total": 10
     },
     "models[].model_badges": {
       "types": [
         "array"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].model_badges[]": {
       "types": [
         "object"
       ],
-      "seen": 25,
-      "total": 25
+      "seen": 10,
+      "total": 10
     },
     "models[].model_badges[].display_name": {
       "types": [
         "string"
       ],
-      "seen": 25,
-      "total": 25
+      "seen": 10,
+      "total": 10
     },
     "models[].model_badges[].light": {
       "types": [
         "object"
       ],
-      "seen": 25,
-      "total": 25
+      "seen": 10,
+      "total": 10
     },
     "models[].model_badges[].light.text_color": {
       "types": [
         "string"
       ],
-      "seen": 25,
-      "total": 25
+      "seen": 10,
+      "total": 10
     },
     "models[].model_badges[].light.background_color": {
       "types": [
         "string"
       ],
-      "seen": 25,
-      "total": 25
+      "seen": 10,
+      "total": 10
     },
     "models[].model_badges[].light.border_color": {
       "types": [
         "string"
       ],
-      "seen": 25,
-      "total": 25
+      "seen": 10,
+      "total": 10
     },
     "models[].model_badges[].dark": {
       "types": [
         "object"
       ],
-      "seen": 25,
-      "total": 25
+      "seen": 10,
+      "total": 10
     },
     "models[].model_badges[].dark.text_color": {
       "types": [
         "string"
       ],
-      "seen": 25,
-      "total": 25
+      "seen": 10,
+      "total": 10
     },
     "models[].model_badges[].dark.background_color": {
       "types": [
         "string"
       ],
-      "seen": 25,
-      "total": 25
+      "seen": 10,
+      "total": 10
     },
     "models[].model_badges[].dark.border_color": {
       "types": [
         "string"
       ],
-      "seen": 25,
-      "total": 25
+      "seen": 10,
+      "total": 10
     },
     "models[].style": {
       "types": [
         "object"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].style.light": {
       "types": [
         "object"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].style.light.text_color": {
       "types": [
         "string"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].style.dark": {
       "types": [
         "object"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].style.dark.text_color": {
       "types": [
         "string"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].capabilities": {
       "types": [
         "array"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].capabilities[]": {
       "types": [
         "string"
       ],
-      "seen": 425,
-      "total": 425
+      "seen": 20,
+      "total": 20
     },
     "models[].features": {
       "types": [
         "array"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].features[]": {
       "types": [
         "string"
       ],
-      "seen": 100,
-      "total": 100
+      "seen": 75,
+      "total": 75
     },
     "models[].allowed_condition_combinations": {
       "types": [
         "array"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "models[].allowed_condition_combinations[]": {
       "types": [
         "array"
       ],
-      "seen": 380,
-      "total": 380
+      "seen": 225,
+      "total": 225
     },
     "models[].allowed_condition_combinations[][]": {
       "types": [
         "string"
       ],
-      "seen": 540,
-      "total": 540
+      "seen": 330,
+      "total": 330
     },
     "models[].id": {
       "types": [
         "string"
       ],
-      "seen": 45,
-      "total": 45
+      "seen": 15,
+      "total": 15
     },
     "plan_price": {
       "types": [
@@ -558,6 +593,13 @@
     "plan_currency_price": {
       "types": [
         "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "default_currency": {
+      "types": [
+        "string"
       ],
       "seen": 5,
       "total": 5
@@ -650,15 +692,15 @@
       "types": [
         "object"
       ],
-      "seen": 190,
-      "total": 190
+      "seen": 200,
+      "total": 200
     },
     "plans[].usage_plan_features[].name": {
       "types": [
         "string"
       ],
-      "seen": 190,
-      "total": 190
+      "seen": 200,
+      "total": 200
     },
     "plans[].prices": {
       "types": [
@@ -671,29 +713,29 @@
       "types": [
         "object"
       ],
-      "seen": 340,
-      "total": 340
+      "seen": 320,
+      "total": 320
     },
     "plans[].prices[].period_type": {
       "types": [
         "string"
       ],
-      "seen": 340,
-      "total": 340
+      "seen": 320,
+      "total": 320
     },
     "plans[].prices[].currency": {
       "types": [
         "string"
       ],
-      "seen": 340,
-      "total": 340
+      "seen": 320,
+      "total": 320
     },
     "plans[].prices[].price": {
       "types": [
         "number"
       ],
-      "seen": 340,
-      "total": 340
+      "seen": 320,
+      "total": 320
     },
     "accessible_features": {
       "types": [
@@ -923,36 +965,78 @@
       "types": [
         "object"
       ],
-      "seen": 15,
-      "total": 15
+      "seen": 5,
+      "total": 5
     },
     "remaster_model_types[].name": {
       "types": [
         "string"
       ],
-      "seen": 15,
-      "total": 15
+      "seen": 5,
+      "total": 5
     },
     "remaster_model_types[].external_key": {
       "types": [
         "string"
       ],
-      "seen": 15,
-      "total": 15
+      "seen": 5,
+      "total": 5
     },
     "remaster_model_types[].is_default_model": {
       "types": [
         "boolean"
       ],
-      "seen": 15,
-      "total": 15
+      "seen": 5,
+      "total": 5
     },
     "remaster_model_types[].can_use": {
       "types": [
         "boolean"
       ],
-      "seen": 15,
-      "total": 15
+      "seen": 5,
+      "total": 5
+    },
+    "download_usage": {
+      "types": [
+        "object"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "download_usage.current_period_downloads_used": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "download_usage.current_period_downloads_limit": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "download_usage.additional_download_remaining": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "download_usage.current_period_download_top_ups_purchased": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
+    },
+    "download_usage.current_period_download_top_up_purchase_limit": {
+      "types": [
+        "number"
+      ],
+      "seen": 5,
+      "total": 5
     },
     "is_pause_scheduled": {
       "types": [
@@ -976,5 +1060,5 @@
       "total": 5
     }
   },
-  "recordedAt": "2026-08-16T23:32:09.031Z"
+  "recordedAt": "2026-09-10T14:42:23.561Z"
 }

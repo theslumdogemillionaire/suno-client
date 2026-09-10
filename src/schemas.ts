@@ -41,6 +41,62 @@ export const ClipMetadataSchema = z
   })
   .passthrough();
 
+/**
+ * The one entry Suno puts in `media_urls`, as of 2026-09-10.
+ *
+ * NOT a download source. The URL is public and unauthenticated and answers 200
+ * with `content-type: audio/mp4`, which makes it look like the obvious
+ * replacement for `audio_url` — it is not. The payload measures 7.997 bits per
+ * byte end to end and carries no `ftyp`, no `moov`, no container magic of any
+ * kind: it is encrypted, and ffmpeg rejects it with "moov atom not found".
+ * Verified on a `complete` clip whose sanctioned mp3 plays fine.
+ *
+ * It is typed here so the drift detector stops reporting it and so the next
+ * reader does not repeat that experiment. Playable audio comes from
+ * `/api/download/clip/{id}`; see `AUDIO_FORBIDDEN_URL`.
+ *
+ * `content_type` has only ever been seen as `m4a-opus`, `delivery` as
+ * `progressive`, `encoding` as `1.0.0` — all across 50 clips. All four fields
+ * are loose on purpose: none of them is worth an outage.
+ */
+export const MediaUrlSchema = z
+  .object({
+    url: z.string(),
+    content_type: z.string().nullish(),
+    delivery: z.string().nullish(),
+    encoding: z.string().nullish(),
+  })
+  .passthrough();
+
+export type MediaUrl = z.infer<typeof MediaUrlSchema>;
+
+/**
+ * What `audio_url` holds now that Suno has stopped serving audio from it.
+ *
+ * Not an error state and not a placeholder for "still rendering": as of
+ * 2026-09-10 every clip in a live library carries this, `complete` ones
+ * included, retroactively — including clips downloaded successfully weeks
+ * earlier. Fetching it returns 403.
+ *
+ * The trap it sets is that it is a non-empty string, so `Boolean(clip.audio_url)`
+ * and `typeof url === 'string' && url !== ''` both say yes. Every truthiness
+ * check written against `audio_url` before this date now passes on every clip
+ * and defers the failure to a 403 at download time.
+ */
+export const AUDIO_FORBIDDEN_URL = 'https://studio-api.prod.suno.com/api/forbidden';
+
+/**
+ * True when `url` is a URL you can actually fetch bytes from.
+ *
+ * Compared on the path rather than the whole string: the host has already moved
+ * once (`studio-api.prod` here, `studio-api-prod` for the API itself) and a
+ * literal match would silently start passing again the day it moves back.
+ */
+export function isFetchableUrl(url: unknown): url is string {
+  if (typeof url !== 'string' || url === '') return false;
+  return !url.endsWith('/api/forbidden');
+}
+
 export const ClipSchema = z
   .object({
     id: z.string(),
@@ -50,9 +106,12 @@ export const ClipSchema = z
     // mid-stream. The enum stays exported for callers who want to switch on it.
     status: z.string(),
     model_name: z.string(),
+    // Reads as a URL, fetches as a 403. See AUDIO_FORBIDDEN_URL before trusting it.
     audio_url: z.string().nullish(),
     video_url: z.string().nullish(),
     image_url: z.string().nullish(),
+    /** Encrypted delivery metadata, never a download source. See MediaUrlSchema. */
+    media_urls: z.array(MediaUrlSchema).nullish(),
     created_at: z.string(),
     play_count: z.number().optional(),
     upvote_count: z.number().optional(),

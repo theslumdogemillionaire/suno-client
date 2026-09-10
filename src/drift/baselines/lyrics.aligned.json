@@ -9,6 +9,48 @@
       "seen": 5,
       "total": 5
     },
+    "aligned_words[]": {
+      "types": [
+        "object"
+      ],
+      "seen": 519,
+      "total": 519
+    },
+    "aligned_words[].word": {
+      "types": [
+        "string"
+      ],
+      "seen": 519,
+      "total": 519
+    },
+    "aligned_words[].success": {
+      "types": [
+        "boolean"
+      ],
+      "seen": 519,
+      "total": 519
+    },
+    "aligned_words[].start_s": {
+      "types": [
+        "number"
+      ],
+      "seen": 519,
+      "total": 519
+    },
+    "aligned_words[].end_s": {
+      "types": [
+        "number"
+      ],
+      "seen": 519,
+      "total": 519
+    },
+    "aligned_words[].p_align": {
+      "types": [
+        "number"
+      ],
+      "seen": 519,
+      "total": 519
+    },
     "waveform_data": {
       "types": [
         "array"
@@ -20,8 +62,8 @@
       "types": [
         "number"
       ],
-      "seen": 2149,
-      "total": 2149
+      "seen": 4138,
+      "total": 4138
     },
     "hoot_cer": {
       "types": [
@@ -44,118 +86,76 @@
       "seen": 5,
       "total": 5
     },
-    "aligned_words[]": {
-      "types": [
-        "object"
-      ],
-      "seen": 3,
-      "total": 3
-    },
-    "aligned_words[].word": {
-      "types": [
-        "string"
-      ],
-      "seen": 3,
-      "total": 3
-    },
-    "aligned_words[].success": {
-      "types": [
-        "boolean"
-      ],
-      "seen": 3,
-      "total": 3
-    },
-    "aligned_words[].start_s": {
-      "types": [
-        "number"
-      ],
-      "seen": 3,
-      "total": 3
-    },
-    "aligned_words[].end_s": {
-      "types": [
-        "number"
-      ],
-      "seen": 3,
-      "total": 3
-    },
-    "aligned_words[].p_align": {
-      "types": [
-        "number"
-      ],
-      "seen": 3,
-      "total": 3
-    },
     "aligned_lyrics[]": {
       "types": [
         "object"
       ],
-      "seen": 3,
-      "total": 3
+      "seen": 88,
+      "total": 88
     },
     "aligned_lyrics[].text": {
       "types": [
         "string"
       ],
-      "seen": 3,
-      "total": 3
+      "seen": 88,
+      "total": 88
     },
     "aligned_lyrics[].start_s": {
       "types": [
         "number"
       ],
-      "seen": 3,
-      "total": 3
+      "seen": 88,
+      "total": 88
     },
     "aligned_lyrics[].end_s": {
       "types": [
         "number"
       ],
-      "seen": 3,
-      "total": 3
+      "seen": 88,
+      "total": 88
     },
     "aligned_lyrics[].section": {
       "types": [
         "string"
       ],
-      "seen": 3,
-      "total": 3
+      "seen": 88,
+      "total": 88
     },
     "aligned_lyrics[].words": {
       "types": [
         "array"
       ],
-      "seen": 3,
-      "total": 3
+      "seen": 88,
+      "total": 88
     },
     "aligned_lyrics[].words[]": {
       "types": [
         "object"
       ],
-      "seen": 9,
-      "total": 9
+      "seen": 769,
+      "total": 769
     },
     "aligned_lyrics[].words[].text": {
       "types": [
         "string"
       ],
-      "seen": 9,
-      "total": 9
+      "seen": 769,
+      "total": 769
     },
     "aligned_lyrics[].words[].start_s": {
       "types": [
         "number"
       ],
-      "seen": 9,
-      "total": 9
+      "seen": 769,
+      "total": 769
     },
     "aligned_lyrics[].words[].end_s": {
       "types": [
         "number"
       ],
-      "seen": 9,
-      "total": 9
+      "seen": 769,
+      "total": 769
     }
   },
-  "recordedAt": "2026-08-16T23:32:09.031Z"
+  "recordedAt": "2026-09-10T14:42:23.561Z"
 }

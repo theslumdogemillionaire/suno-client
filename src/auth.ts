@@ -17,7 +17,16 @@ export interface AuthState {
   jwt?: string | undefined;
   sessionId?: string | undefined;
   deviceId?: string | undefined;
-  /** The Clerk `__client` cookie. Long-lived, roughly 7 days. The real secret. */
+  /**
+   * The Clerk `__client` cookie. The real secret; everything else here is
+   * derived from it and can be re-minted while it lives.
+   *
+   * Long-lived, and by more than this comment used to claim: read straight out
+   * of a browser profile on 2026-09-10, its expiry was 2027-09-09 — a year, not
+   * the week originally assumed. Which means a dead session is almost never an
+   * expired cookie. It is a cookie that was rotated by signing in again
+   * somewhere else, or one that was never stored in the first place.
+   */
   clerkClientCookie: string;
 }
 

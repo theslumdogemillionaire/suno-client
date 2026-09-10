@@ -9,7 +9,7 @@ import NodeID3 from 'node-id3';
 import { alignedLyrics } from './api/misc.js';
 import type { SunoClient } from './client.js';
 import { SunoError } from './errors.js';
-import type { AlignedWord, Clip } from './schemas.js';
+import { isFetchableUrl, type AlignedWord, type Clip } from './schemas.js';
 
 export interface DownloadOptions {
   /** Directory. Created if missing. */
@@ -61,15 +61,39 @@ export function clipFilename(title: string, id: string, ext: string): string {
   return slug === '' ? `${shortId}.${ext}` : `${slug}-${shortId}.${ext}`;
 }
 
+/**
+ * The URL to pull bytes from, or a refusal that says which of the two reasons
+ * applies.
+ *
+ * Those two used to be one. Until 2026-09-10 an unusable `audio_url` was an
+ * empty one, so "no audio URL yet" covered both the queued clip and the broken
+ * one. Suno now parks every clip's `audio_url` on a 403 sentinel — see
+ * `AUDIO_FORBIDDEN_URL` — which is a non-empty string, so the old emptiness
+ * check passed on every clip in the library and the caller learned nothing
+ * until `fetch` came back 403 with no explanation attached.
+ *
+ * `media_urls` is deliberately NOT consulted as a fallback: it answers 200 but
+ * its payload is encrypted. Reaching for it here is the mistake this comment
+ * exists to prevent.
+ */
 function pickUrl(clip: Clip, video: boolean): string {
   const url = video ? clip.video_url : clip.audio_url;
-  if (typeof url !== 'string' || url === '') {
+  if (isFetchableUrl(url)) return url;
+
+  const kind = video ? 'video' : 'audio';
+  if (typeof url === 'string' && url !== '') {
     throw new SunoError({
-      code: 'not_found',
-      message: `clip ${clip.id} has no ${video ? 'video' : 'audio'} URL (status: ${clip.status})`,
+      code: 'download_locked',
+      message:
+        `clip ${clip.id}: Suno no longer serves ${kind} from ${kind}_url (it returns 403). ` +
+        `A download has to be unlocked for this clip first, which spends one of the ` +
+        `account's metered downloads; see docs/STATUS.md.`,
     });
   }
-  return url;
+  throw new SunoError({
+    code: 'not_found',
+    message: `clip ${clip.id} has no ${kind} URL (status: ${clip.status})`,
+  });
 }
 
 /** Word timings to an LRC-style SYLT payload. */

@@ -15,8 +15,8 @@ services:
   #   docker compose run --rm canary
   #   docker compose run --rm canary npx tsx scripts/canary.ts --paid
   #
-  # SUNO_COOKIE holds a ~7 day session, any tier: keep it in .env, which is
-  # gitignored, and never in this file.
+  # SUNO_COOKIE holds the session cookie, any tier - good for about a year, not
+  # the week once assumed here. Keep it in .env, which is gitignored, never here.
   canary:
     build: .
     command: npx tsx scripts/canary.ts
