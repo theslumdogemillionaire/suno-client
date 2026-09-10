@@ -1,7 +1,14 @@
 import { createCipheriv, createHash, pbkdf2Sync } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
-import { chromeTime, decryptValue, preferLongestLived, type FoundCookie } from '../../src/browser-cookie.js';
+import {
+  chooseCookie,
+  chromeTime,
+  clientIdOf,
+  decryptValue,
+  preferLongestLived,
+  type FoundCookie,
+} from '../../src/browser-cookie.js';
 
 /** The macOS key derivation, restated here so a change to it fails a test. */
 const KEY = pbkdf2Sync('a fake safe storage password', 'saltysalt', 1003, 16, 'sha1');
@@ -79,17 +86,16 @@ describe('decrypting a Chromium cookie', () => {
 });
 
 describe('choosing between profiles', () => {
-  const at = (iso: string | undefined): FoundCookie => ({
+  const at = (iso: string | undefined, clientId = 'client_same'): FoundCookie => ({
     value: 'x',
+    cookieHeader: '__client=x',
     browser: 'chrome',
     profile: iso ?? 'session',
     expiresAt: iso === undefined ? undefined : new Date(iso),
+    clientId,
   });
 
-  it('takes the cookie that stays valid longest', () => {
-    // Two profiles signed into the same account is the normal case on a machine
-    // where someone tested something in a second profile. Picking arbitrarily
-    // would authenticate a bot as whichever account that happened to be.
+  it('takes the cookie that stays valid longest, within one account', () => {
     const chosen = preferLongestLived([at('2026-10-01'), at('2027-09-09'), at('2026-09-11')]);
     expect(chosen?.profile).toBe('2027-09-09');
   });
@@ -100,6 +106,51 @@ describe('choosing between profiles', () => {
 
   it('has nothing to choose from an empty list', () => {
     expect(preferLongestLived([])).toBeUndefined();
+    expect(chooseCookie([])).toEqual({ kind: 'none' });
+  });
+
+  it('refuses to pick between two DIFFERENT accounts', () => {
+    // The real machine this was written on: two Chrome profiles, two Clerk
+    // clients, cookies seven seconds apart. Longest-lived happened to be right.
+    // Eight seconds the other way and a stream bot signs in as the wrong
+    // account, silently, with everything still appearing to work.
+    const choice = chooseCookie([
+      at('2027-09-09T19:49:01Z', 'client_U3YKNsC'),
+      at('2027-09-09T19:49:08Z', 'client_UtesQVW'),
+    ]);
+    expect(choice.kind).toBe('ambiguous');
+  });
+
+  it('lets an already-stored session settle it outright', () => {
+    // The reconnect case, which is the common one: we are not choosing an
+    // account, we are refreshing the one already in use. Note the match wins
+    // even though the other cookie lives longer.
+    const choice = chooseCookie(
+      [at('2028-01-01T00:00:00Z', 'client_other'), at('2027-09-09T19:49:08Z', 'client_mine')],
+      { knownClientId: 'client_mine' },
+    );
+    expect(choice.kind === 'one' && choice.cookie.clientId).toBe('client_mine');
+  });
+
+  it('still picks freely when every candidate is the same account', () => {
+    const choice = chooseCookie([at('2026-10-01'), at('2027-09-09')]);
+    expect(choice.kind === 'one' && choice.cookie.profile).toBe('2027-09-09');
+  });
+});
+
+describe('reading the client out of a cookie', () => {
+  it('finds the Clerk client id in the payload', () => {
+    const payload = Buffer.from(
+      JSON.stringify({ 'suno.com/claims/client_id': 'client_UtesQVW' }),
+      'utf8',
+    ).toString('base64url');
+    expect(clientIdOf(`header.${payload}.sig`)).toBe('client_UtesQVW');
+  });
+
+  it('returns undefined rather than throwing on anything else', () => {
+    expect(clientIdOf('not-a-jwt')).toBeUndefined();
+    expect(clientIdOf('a.!!!not-base64!!!.c')).toBeUndefined();
+    expect(clientIdOf('')).toBeUndefined();
   });
 });
 

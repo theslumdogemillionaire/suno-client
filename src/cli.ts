@@ -9,8 +9,9 @@ import { readFileSync } from 'node:fs';
 import { Suno } from './suno.js';
 import {
   BROWSER_NAMES,
+  chooseCookie,
+  clientIdOf,
   findSessionCookies,
-  preferLongestLived,
   type BrowserName,
 } from './browser-cookie.js';
 import { decodeJwtClaims } from './auth.js';
@@ -93,19 +94,35 @@ async function cookieFromBrowser(): Promise<string> {
         'suno-client login --stdin',
     });
   }
-  const chosen = preferLongestLived(found);
-  if (chosen === undefined) throw new SunoError({ code: 'auth_missing', message: 'no usable cookie' });
+  // An already-stored session settles the choice: re-taking a cookie for the
+  // client we are already using cannot pick the wrong account.
+  const stored = await new FileAuthStore(defaultAuthPath()).load().catch(() => undefined);
+  const knownClientId = stored ? clientIdOf(stored.clerkClientCookie) : undefined;
+  const choice = chooseCookie(found, { knownClientId });
 
+  if (choice.kind === 'none') {
+    throw new SunoError({ code: 'auth_missing', message: 'no usable cookie' });
+  }
+  if (choice.kind === 'ambiguous') {
+    const list = choice.candidates
+      .map((c) => `  --browser ${c.browser} --profile ${JSON.stringify(c.profile)}  (client ${c.clientId ?? 'unknown'})`)
+      .join('\n');
+    throw new SunoError({
+      code: 'invalid_input',
+      message:
+        `found ${choice.candidates.length} Suno sessions belonging to DIFFERENT accounts, and ` +
+        `expiry is not a safe way to choose between them. Say which one:\n${list}`,
+    });
+  }
+
+  const chosen = choice.cookie;
   if (found.length > 1) {
-    const others = found
-      .filter((c) => c !== chosen)
-      .map((c) => `${c.browser}/${c.profile}`)
-      .join(', ');
-    console.error(`[login] ${found.length} sessions found (${others}); using the one that expires last.`);
+    const why = knownClientId !== undefined ? 'matches the session already stored' : 'same account, expires last';
+    console.error(`[login] ${found.length} sessions found; using ${chosen.browser}/${chosen.profile} (${why}).`);
   }
   const until = chosen.expiresAt ? ` (valid until ${chosen.expiresAt.toISOString().slice(0, 10)})` : '';
   console.error(`[login] using ${chosen.browser}/${chosen.profile}${until}.`);
-  return chosen.value;
+  return chosen.cookieHeader;
 }
 
 /**

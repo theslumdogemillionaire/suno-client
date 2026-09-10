@@ -33,6 +33,18 @@ const requireFromHere = createRequire(import.meta.url);
 export const SESSION_COOKIE_NAME = '__client';
 /** Clerk serves the session cookie from the auth subdomain, never from suno.com. */
 export const SESSION_COOKIE_HOST = 'auth.suno.com';
+/**
+ * Segment's anonymous id, which is what the client sends as `device-id`.
+ *
+ * Lifted alongside the session because the alternative is worse than it looks.
+ * `normalizeCookieInput` only finds a device id in a full `Cookie:` header, so
+ * handing it a bare `__client` stores `deviceId: undefined` — and the client
+ * then falls back to a UUID generated fresh in every process. The header
+ * comments call that out as the single most obvious fingerprint there is, and
+ * an import that quietly caused it would be undoing the work on the way in.
+ * Taking the browser's own value is also more faithful than preserving ours.
+ */
+export const DEVICE_COOKIE_NAME = 'ajs_anonymous_id';
 
 export type BrowserName = 'chrome' | 'brave' | 'edge' | 'chromium';
 
@@ -86,6 +98,41 @@ export interface FoundCookie {
   profile: string;
   /** Cookie expiry, so a caller can warn before it lapses. */
   expiresAt: Date | undefined;
+  /**
+   * Clerk client this cookie belongs to, from its own payload.
+   *
+   * The only thing that distinguishes two sessions found on one machine, and
+   * therefore the only safe basis for choosing between them. Undefined when the
+   * payload does not carry one.
+   */
+  clientId: string | undefined;
+  /**
+   * `Cookie:` header form, carrying the device id when the profile had one.
+   *
+   * Hand THIS to `login`, not `value`: it is the shape `normalizeCookieInput`
+   * can read a device id out of.
+   */
+  cookieHeader: string;
+}
+
+/**
+ * The Clerk client a `__client` cookie belongs to.
+ *
+ * `__client` is itself a JWT, and its payload carries
+ * `suno.com/claims/client_id`. Reading it costs nothing and turns "two cookies"
+ * into "two cookies, and here is whether they are the same account".
+ */
+export function clientIdOf(cookie: string): string | undefined {
+  const payload = cookie.split('.')[1];
+  if (payload === undefined) return undefined;
+  try {
+    const claims: unknown = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    if (typeof claims !== 'object' || claims === null) return undefined;
+    const id = (claims as Record<string, unknown>)['suno.com/claims/client_id'];
+    return typeof id === 'string' && id !== '' ? id : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function profileRoot(browser: BrowserName): string | undefined {
@@ -294,7 +341,7 @@ interface CookieRow {
  * it open, and reading it in place returns SQLITE_BUSY at exactly the moment
  * someone is most likely to try this — browser open, having just signed in.
  */
-function readCookieRows(cookiesPath: string, host: string, name: string): CookieRow[] {
+function readCookieRows(cookiesPath: string, name: string): CookieRow[] {
   const scratch = mkdtempSync(join(tmpdir(), 'suno-cookie-'));
   const copy = join(scratch, 'Cookies');
   try {
@@ -310,9 +357,23 @@ function readCookieRows(cookiesPath: string, host: string, name: string): Cookie
     const { DatabaseSync } = requireFromHere('node:sqlite') as typeof import('node:sqlite');
     const db = new DatabaseSync(copy, { readOnly: true });
     try {
+      // `cast(... as real)` is not decoration. Chromium stores expiry as
+      // microseconds since 1601, which for any date after 1885 exceeds
+      // Number.MAX_SAFE_INTEGER — node:sqlite then throws
+      // `RangeError: Value is too large to be represented as a JavaScript
+      // number` on the whole row, encrypted value included, for every profile.
+      // Reading it as a double costs a microsecond of precision on a value only
+      // ever used to build a Date, and costs nothing else.
+      // Matched on the name across every suno host rather than on one exact
+      // host_key: `__client` sits on `auth.suno.com` while the device id sits
+      // on `.suno.com`, leading dot included, and hard-coding either spelling
+      // is a silent miss the day Clerk moves a subdomain.
       const rows = db
-        .prepare('select encrypted_value, expires_utc from cookies where host_key = ? and name = ?')
-        .all(host, name) as unknown as Array<{ encrypted_value: Uint8Array; expires_utc: number | bigint }>;
+        .prepare(
+          'select encrypted_value, cast(expires_utc as real) as expires_utc ' +
+            "from cookies where name = ? and (host_key = 'suno.com' or host_key like '%.suno.com')",
+        )
+        .all(name) as unknown as Array<{ encrypted_value: Uint8Array; expires_utc: number | bigint }>;
       return rows.map((row) => ({
         value: Buffer.from(row.encrypted_value),
         expiresUtc: Number(row.expires_utc),
@@ -368,14 +429,49 @@ export async function findSessionCookies(options: FindCookieOptions = {}): Promi
     for (const profile of profiles) {
       let rows: CookieRow[];
       try {
-        rows = readCookieRows(join(root, profile, 'Cookies'), SESSION_COOKIE_HOST, SESSION_COOKIE_NAME);
-      } catch {
+        rows = readCookieRows(join(root, profile, 'Cookies'), SESSION_COOKIE_NAME);
+      } catch (err) {
+        // Recorded, never swallowed. A bare `continue` here is what turned a
+        // RangeError on every single profile into "found 0 sessions" with no
+        // error and nothing to look at — the same failure shape as the
+        // audio_url sentinel: a guard that hides the cause it was meant to
+        // report.
+        errors.push(`${browser}/${profile}: ${err instanceof Error ? err.message : String(err)}`);
         continue;
       }
+      // Best-effort: a missing device id costs a less stable fingerprint, never
+      // the login, so it must not be able to fail the import.
+      let deviceId: string | undefined;
+      try {
+        for (const row of readCookieRows(join(root, profile, 'Cookies'), DEVICE_COOKIE_NAME)) {
+          const decoded = decryptValue(row.value, key);
+          if (decoded !== undefined && decoded !== '') {
+            deviceId = decoded;
+            break;
+          }
+        }
+      } catch {
+        deviceId = undefined;
+      }
+
       for (const row of rows) {
         const value = decryptValue(row.value, key);
-        if (value === undefined || value === '') continue;
-        found.push({ value, browser, profile, expiresAt: chromeTime(row.expiresUtc) });
+        if (value === undefined || value === '') {
+          errors.push(`${browser}/${profile}: found a ${SESSION_COOKIE_NAME} cookie but could not decode it`);
+          continue;
+        }
+        const cookieHeader =
+          deviceId === undefined
+            ? `${SESSION_COOKIE_NAME}=${value}`
+            : `${SESSION_COOKIE_NAME}=${value}; ${DEVICE_COOKIE_NAME}=${deviceId}`;
+        found.push({
+          value,
+          cookieHeader,
+          browser,
+          profile,
+          expiresAt: chromeTime(row.expiresUtc),
+          clientId: clientIdOf(value),
+        });
       }
     }
   }
@@ -391,4 +487,45 @@ export async function findSessionCookies(options: FindCookieOptions = {}): Promi
 /** The single best candidate: the one that stays valid longest. */
 export function preferLongestLived(cookies: readonly FoundCookie[]): FoundCookie | undefined {
   return [...cookies].sort((a, b) => (b.expiresAt?.getTime() ?? 0) - (a.expiresAt?.getTime() ?? 0))[0];
+}
+
+export type CookieChoice =
+  | { kind: 'one'; cookie: FoundCookie }
+  | { kind: 'none' }
+  /** Several different Clerk clients. Refusing beats guessing. */
+  | { kind: 'ambiguous'; candidates: readonly FoundCookie[] };
+
+/**
+ * Pick a cookie, or decline to.
+ *
+ * Expiry is NOT a safe tiebreak between accounts, and this machine is the proof:
+ * two Chrome profiles, two different Clerk clients, cookies expiring seven
+ * seconds apart. "Longest-lived" happened to land on the right one. Eight
+ * seconds the other way and `--from-browser` would have signed a stream bot in
+ * as the wrong account, silently, with everything still appearing to work.
+ *
+ * So expiry only ever breaks ties WITHIN one client. Across clients:
+ *
+ *   - if a session is already stored, the matching client wins outright — that
+ *     is the reconnect case, and it is unambiguous by construction;
+ *   - otherwise the caller is asked which one, and told how to say so.
+ */
+export function chooseCookie(
+  cookies: readonly FoundCookie[],
+  options: { knownClientId?: string | undefined } = {},
+): CookieChoice {
+  if (cookies.length === 0) return { kind: 'none' };
+
+  const known = options.knownClientId;
+  if (known !== undefined) {
+    const mine = cookies.filter((c) => c.clientId === known);
+    const best = preferLongestLived(mine);
+    if (best !== undefined) return { kind: 'one', cookie: best };
+  }
+
+  const clients = new Set(cookies.map((c) => c.clientId ?? 'unknown'));
+  if (clients.size > 1) return { kind: 'ambiguous', candidates: cookies };
+
+  const only = preferLongestLived(cookies);
+  return only === undefined ? { kind: 'none' } : { kind: 'one', cookie: only };
 }

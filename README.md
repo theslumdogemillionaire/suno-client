@@ -182,11 +182,23 @@ the session straight from it and skip the devtools dance entirely:
 suno-client login --from-browser
 ```
 
-It searches every profile, prints which one it used, and prefers the cookie
-that expires last when the account is open in more than one. macOS raises a
-Keychain prompt, because reading the browser's cookie key is exactly the kind
-of thing an operating system should ask about; approving it once is the whole
-interaction. Narrow it with `--browser chrome` or `--profile Default`.
+It searches every profile and prints which one it used. macOS raises a Keychain
+prompt, because reading the browser's cookie key is exactly the kind of thing an
+operating system should ask about; approving it once is the whole interaction.
+Narrow it with `--browser chrome` or `--profile Default`.
+
+When a machine holds more than one Suno session, expiry does **not** decide.
+The machine this was built on has two Chrome profiles signed into two different
+Clerk accounts, with cookies expiring seven seconds apart — so "longest-lived"
+would have been a coin flip between accounts. Instead: a session already stored
+settles it (that is the reconnect case, unambiguous by construction), and
+otherwise the command stops and asks which, listing each profile with its client
+id. Expiry only ever breaks ties within one account.
+
+The device id travels with the session. `--from-browser` lifts the profile's own
+`ajs_anonymous_id` too and hands `login` a full `Cookie:` header, because a bare
+`__client` leaves `deviceId` unset and the client then invents a fresh UUID in
+every process — the unstable fingerprint its own header comments warn about.
 
 The manual route still works, and is the only one on Windows: log into
 suno.com, devtools, Application, Cookies, **`auth.suno.com`** (not `suno.com` —
