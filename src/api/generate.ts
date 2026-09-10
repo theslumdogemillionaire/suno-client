@@ -6,7 +6,22 @@ import { GenerateResponseSchema, type Clip } from '../schemas.js';
 
 export const GENERATE_PATH = '/api/generate/v2-web/';
 
-/** v5.5. Suno's default; `suno.models()` lists what the account can actually use. */
+/**
+ * Last-resort model, used only when billing cannot be read.
+ *
+ * v5.5, and no longer Suno's default: a Pro account measured on 2026-09-10
+ * reported `chirp-hawk` (v6) as its default and listed `chirp-hawk`,
+ * `chirp-hawk-wild` and `chirp-goose` as usable — `chirp-fenix` was not among
+ * them. So on that account this fallback would 403 with "You don't have access
+ * to this model", which is the exact failure 0.2.0 fixed for Free accounts.
+ *
+ * It is deliberately NOT bumped to a v6 key. Picking a constant from the one
+ * account that could be measured is what put the wrong one here in the first
+ * place, and a v6 default would fail the tiers that cannot use v6. The real
+ * answer is `pickDefaultModel()`, which reads `is_default_model` from billing
+ * and runs on every create; this constant only matters when that lookup fails,
+ * and when it does, an explicit `model` is the reliable move.
+ */
 export const DEFAULT_MODEL = 'chirp-fenix';
 
 export interface ControlSliders {
@@ -16,6 +31,16 @@ export interface ControlSliders {
   styleWeight?: number;
   /** 0..1, how strongly source audio shapes a cover or remix. */
   audioWeight?: number;
+  /**
+   * v6's creativity dial. Optional, despite appearances.
+   *
+   * It shows up on every create the web app makes and on every v6 clip in a
+   * feed, which reads like a new required field — a traffic capture cannot tell
+   * the two apart. Probed directly on 2026-09-10: a body with the sliders and
+   * without this one validates identically to a body with it, so omitting it is
+   * safe. Sent when set, absent when not.
+   */
+  augCreativity?: number;
 }
 
 export interface GenerateMetadataWire {
@@ -35,6 +60,7 @@ export interface GenerateMetadataWire {
     weirdness_constraint?: number;
     style_weight?: number;
     audio_weight?: number;
+    aug_creativity?: number;
   };
 }
 
@@ -132,6 +158,7 @@ function slidersToWire(s: ControlSliders | undefined): GenerateMetadataWire['con
   if (s.weirdnessConstraint !== undefined) wire.weirdness_constraint = s.weirdnessConstraint;
   if (s.styleWeight !== undefined) wire.style_weight = s.styleWeight;
   if (s.audioWeight !== undefined) wire.audio_weight = s.audioWeight;
+  if (s.augCreativity !== undefined) wire.aug_creativity = s.augCreativity;
   return Object.keys(wire).length > 0 ? wire : undefined;
 }
 

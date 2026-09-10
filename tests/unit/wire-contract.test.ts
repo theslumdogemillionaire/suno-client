@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   baseWireBody,
   buildCustomBody,
+  buildMetadata,
   buildDescribeBody,
   DEFAULT_MODEL,
   validateSubmission,
@@ -179,5 +180,27 @@ describe('submission validation', () => {
     });
     expect(clips).toHaveLength(1);
     expect(clips[0]?.id).toBe('a');
+  });
+});
+
+describe('the v6 creativity slider', () => {
+  it('travels as aug_creativity when set', () => {
+    const wire = buildMetadata('custom', { augCreativity: 0.75 });
+    expect(wire.control_sliders?.aug_creativity).toBe(0.75);
+  });
+
+  it('is absent when unset, because it is optional despite appearances', () => {
+    // A traffic capture shows it on every web-app create and on every v6 clip,
+    // which reads exactly like a new required field. Probed against the live
+    // endpoint on 2026-09-10: a slider object with it and one without validate
+    // identically, so sending it unasked would be cargo cult.
+    const wire = buildMetadata('custom', { styleWeight: 0.5 });
+    expect(wire.control_sliders).toEqual({ style_weight: 0.5 });
+    expect(wire.control_sliders).not.toHaveProperty('aug_creativity');
+  });
+
+  it('leaves control_sliders off entirely when no dial is set', () => {
+    expect(buildMetadata('custom', {}).control_sliders).toBeUndefined();
+    expect(buildMetadata('custom').control_sliders).toBeUndefined();
   });
 });

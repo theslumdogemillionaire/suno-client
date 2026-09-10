@@ -21,13 +21,11 @@ import { createDecipheriv, pbkdf2Sync } from 'node:crypto';
 import { copyFileSync, existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createRequire } from 'node:module';
 import { promisify } from 'node:util';
 
 import { SunoError } from './errors.js';
 
 const execFileAsync = promisify(execFile);
-const requireFromHere = createRequire(import.meta.url);
 
 /** The cookie that IS the session. Everything else Clerk sets is derived from it. */
 export const SESSION_COOKIE_NAME = '__client';
@@ -341,7 +339,7 @@ interface CookieRow {
  * it open, and reading it in place returns SQLITE_BUSY at exactly the moment
  * someone is most likely to try this — browser open, having just signed in.
  */
-function readCookieRows(cookiesPath: string, name: string): CookieRow[] {
+async function readCookieRows(cookiesPath: string, name: string): Promise<CookieRow[]> {
   const scratch = mkdtempSync(join(tmpdir(), 'suno-cookie-'));
   const copy = join(scratch, 'Cookies');
   try {
@@ -352,9 +350,14 @@ function readCookieRows(cookiesPath: string, name: string): CookieRow[] {
     }
     // node:sqlite rather than a dependency or a spawned `sqlite3`: the first
     // would be a runtime dep carried by every install for one query, the second
-    // is not present on every machine this runs on. Required lazily so that
-    // importing this module never costs anything on a Node without it.
-    const { DatabaseSync } = requireFromHere('node:sqlite') as typeof import('node:sqlite');
+    // is not present on every machine this runs on.
+    //
+    // A dynamic import, not `createRequire(import.meta.url)`: this package ships
+    // ESM and CJS from one source, and `import.meta` is a hard compile error in
+    // the CommonJS pass — it fails the build outright rather than at runtime.
+    // Loading it lazily also means importing this module costs nothing on a
+    // Node that has no node:sqlite, which is the whole point of doing it here.
+    const { DatabaseSync } = await import('node:sqlite');
     const db = new DatabaseSync(copy, { readOnly: true });
     try {
       // `cast(... as real)` is not decoration. Chromium stores expiry as
@@ -429,7 +432,7 @@ export async function findSessionCookies(options: FindCookieOptions = {}): Promi
     for (const profile of profiles) {
       let rows: CookieRow[];
       try {
-        rows = readCookieRows(join(root, profile, 'Cookies'), SESSION_COOKIE_NAME);
+        rows = await readCookieRows(join(root, profile, 'Cookies'), SESSION_COOKIE_NAME);
       } catch (err) {
         // Recorded, never swallowed. A bare `continue` here is what turned a
         // RangeError on every single profile into "found 0 sessions" with no
@@ -443,7 +446,7 @@ export async function findSessionCookies(options: FindCookieOptions = {}): Promi
       // the login, so it must not be able to fail the import.
       let deviceId: string | undefined;
       try {
-        for (const row of readCookieRows(join(root, profile, 'Cookies'), DEVICE_COOKIE_NAME)) {
+        for (const row of await readCookieRows(join(root, profile, 'Cookies'), DEVICE_COOKIE_NAME)) {
           const decoded = decryptValue(row.value, key);
           if (decoded !== undefined && decoded !== '') {
             deviceId = decoded;

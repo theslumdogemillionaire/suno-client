@@ -83,11 +83,15 @@ export {
 
 export {
   BROWSER_NAMES,
+  DEVICE_COOKIE_NAME,
   SESSION_COOKIE_HOST,
   SESSION_COOKIE_NAME,
+  chooseCookie,
+  clientIdOf,
   findSessionCookies,
   preferLongestLived,
   type BrowserName,
+  type CookieChoice,
   type FindCookieOptions,
   type FoundCookie,
 } from './browser-cookie.js';

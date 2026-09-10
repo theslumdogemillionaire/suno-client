@@ -105,6 +105,49 @@ not a clip object. `requestStems` therefore returns the raw payload plus any
 clips it could parse. The stems appear in the feed within a minute as
 `<title> - Vocals` and `<title> - Instrumental` and download normally.
 
+## What the generate body actually requires (probed 2026-09-10)
+
+A traffic capture of the web app suggested several new create fields, one of
+them apparently required. Probing the endpoint directly says otherwise, and the
+difference is worth stating plainly: **a capture records what a client sent, not
+what the server demands.** Every finding below is a 422 read back from
+`POST /api/generate/v2-web/`, and none of them cost a credit — a body that fails
+validation never generates. Keeping one deliberately invalid field (`mv` as an
+integer) in each probe guarantees that.
+
+`{}` returns exactly one complaint:
+
+```
+[{'type': 'missing', 'loc': ['body', 'params', 'prompt'], 'msg': 'Field required'}]
+```
+
+**`prompt` is the only required field.** Everything else the web app sends is
+optional as far as the server is concerned.
+
+- **`metadata.control_sliders.aug_creativity` is NOT required.** It appears on
+  every web-app create and on every v6 clip in a feed, which reads exactly like
+  a new mandatory field. A slider object with it and one without produce
+  identical validation. It is supported as `augCreativity` and sent only when
+  set.
+- **`token_provider` is an integer**, confirmed: a string returns
+  `int_parsing`, an integer passes. The client still omits it entirely, which
+  remains correct — the capture showing `integer|null` is consistent with that.
+- **`title` must still be a string.** `null` returns
+  `string_type` on `body.params.title`, unchanged since 2026-08-01.
+- `task: "agentic_thinking"`, `gpt_description_prompt`, `duration`,
+  `lyrics_project_id`, `metadata.create_surface`, `metadata.lyrics_model` and
+  `metadata.create_mode: "simple"` were all in the capture and none are
+  required. `gpt_description_prompt` and `duration` the client already sends
+  where they belong; the rest are unused and stay that way until something
+  actually needs them. `extraFields` exists for exactly this case.
+
+Separately, and worth knowing before trusting `DEFAULT_MODEL`: the Pro account
+measured lists `chirp-hawk`, `chirp-hawk-wild` and `chirp-goose` as usable, with
+`chirp-hawk` as its default. `chirp-fenix` — the constant — is not among them,
+so on that account the fallback would 403. It is not bumped, because choosing a
+constant from one account is what put the wrong one there originally.
+`pickDefaultModel()` reads the real answer from billing on every create.
+
 ## Downloads became metered, and `audio_url` became a trap (2026-09-10)
 
 Suno moved audio delivery off `audio_url` and put it behind a per-clip unlock

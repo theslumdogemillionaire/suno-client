@@ -1,5 +1,89 @@
 # Changelog
 
+## 0.3.0 (2026-09-10)
+
+Suno moved audio delivery and metered downloads on the same day, and 0.2.0 had
+no way to tell you either had happened. It reported "no audio URL" for clips
+that had one, then "unlock this first" for clips already unlocked. Everything
+here is measured against a live Pro account - see `docs/STATUS.md`.
+
+### Added
+
+- **Downloads go through `/api/download/clip/{id}`**, which is where Suno now
+  serves audio from. `downloadClip()` uses it automatically once `audio_url`
+  turns out to be the sentinel, so an unlocked clip simply downloads.
+  `resolveDownloadUrl()` and `downloadTicket()` are exported for callers who
+  want the URL rather than the file.
+- **`authorizeDownload()`**, which spends one of the account's metered
+  downloads, and which **nothing in this library calls**. Reading is free on any
+  clip and the library reads freely; unlocking is capped at 20 per period on
+  Pro, so it only ever happens because somebody decided it should - never
+  because a retry loop reached it.
+- **`login --from-browser`** lifts the session out of a local Chrome, Brave,
+  Edge or Chromium, ending the devtools copy. It searches every profile and says
+  which it used. When profiles hold DIFFERENT Clerk accounts it refuses to guess
+  and asks, because expiry is not a way to choose between accounts - on the
+  machine this was built on, two accounts' cookies expired seven seconds apart.
+  It lifts the profile's `ajs_anonymous_id` too, so the device id stays stable
+  instead of being regenerated per process.
+- **`suno-client session`** reports what state a stored session is in - stored
+  or not, JWT expiry, whether the next call refreshes, whether Suno answers -
+  without printing the cookie or the token.
+- **`download_locked`**, a `SunoErrorCode` for a clip whose download has not
+  been unlocked. Neither retryable nor alert: a library of locked clips is the
+  normal state now, and 48 of 50 alerting would be noise.
+- `media_urls`, `is_download_unlocked` and `download_unlocked_at` are typed on
+  `ClipSchema`; `isFetchableUrl()` and `AUDIO_FORBIDDEN_URL` are exported.
+- **`sliders.augCreativity`**, v6's creativity dial, sent as
+  `control_sliders.aug_creativity` when set and absent when not.
+
+### Fixed
+
+- **`audio_url` is no longer trusted.** It holds a 403 sentinel on every clip in
+  a library, retroactively, including clips that downloaded fine weeks earlier.
+  It is a non-empty string, so every `Boolean(clip.audio_url)` guard written
+  before this still passed on everything and deferred the failure to an
+  unexplained 403 mid-download.
+- **`media_urls` is never used as a download source.** It answers 200 with
+  `audio/mp4` and looks exactly like the replacement; its payload is encrypted
+  (7.997 bits per byte, no `ftyp`, no `moov`, ffmpeg refuses it). Falling back
+  to it would trade a clear error for a corrupt file.
+- **CLI flags no longer eat their own values.** `download <id> --out DIR` kept
+  `DIR` in the positional list and asked Suno for it as a clip, which answers
+  404 - surfacing as "HTTP 404 on /api/feed/", an endpoint that was working
+  fine. `trash`, `restore` and `describe` shared the bug. Separately,
+  `list --limit 6` made `Number('--limit')` NaN, which serialises as
+  `limit: null`, which Suno 422s, which was reported as `schema_drift` with
+  `alert` set - the loudest error in the taxonomy, raised by a typo.
+- Drift baselines re-recorded. They were stale enough to bury real signal under
+  38 findings.
+
+### Measured
+
+- The `__client` cookie lasts about a **year** (expiry 2027-09-09 on a profile
+  signed in that day), not the week 0.2.0 documented. A dead session is
+  therefore almost never an expired cookie: it was rotated by signing in
+  elsewhere, or never stored. It also lives on `auth.suno.com`, not `suno.com`.
+- A plain `GET` on a **locked** clip returns `not_authorized` and deducts
+  nothing, verified against `download_usage` before and after. Detect-and-skip
+  over a library is free.
+- `format` accepts `mp3` (ready immediately on an unlocked clip), and `wav`,
+  `m4a`, `mp4` (which answer `processing` and need polling). `flac`, `ogg` and
+  `opus` are refused.
+- **`prompt` is the only field `generate` requires.** A traffic capture of the
+  web app suggested `control_sliders.aug_creativity` had become mandatory; it
+  has not - a body with the sliders and without it validates identically. A
+  capture records what a client sent, never what a server demands, and reading
+  it as a contract would have added a field to every create on no evidence.
+  `token_provider` is confirmed an integer and still omitted; `title` must still
+  be a string. Probed with a deliberately invalid `mv` in every body, so nothing
+  generated and no credits were spent.
+- `DEFAULT_MODEL` (`chirp-fenix`, v5.5) is **not usable** on the Pro account
+  measured, which offers only v6 keys and defaults to `chirp-hawk`. Left alone
+  on purpose: picking a constant from one account is the mistake that put the
+  wrong one there. `pickDefaultModel()` reads billing on every create, so this
+  only bites when that lookup fails.
+
 ## 0.2.0 (2026-08-18)
 
 Every tier assumption in 0.1.0 came from the one account it had ever been run
