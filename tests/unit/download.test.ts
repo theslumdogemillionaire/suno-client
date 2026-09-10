@@ -197,27 +197,70 @@ describe('the audio_url sentinel', () => {
     expect(isFetchableUrl(undefined)).toBe(false);
   });
 
+  /** A client whose download endpoint answers exactly what Suno answers. */
+  const clientAnswering = (body: unknown) =>
+    ({ request: async () => body }) as never;
+
+  const LOCKED = { ok: false, reason: 'not_authorized' };
+
   it('does not let a forbidden url be mistaken for "still rendering"', async () => {
-    // The two cases carry different codes on purpose: one is a clip that needs a
-    // paid unlock, the other is a clip that is not finished. Collapsing them
+    // The two cases carry different codes on purpose: one is a clip that needs
+    // a paid unlock, the other is a clip that is not finished. Collapsing them
     // sends a caller to wait for something that will never arrive.
     await expect(
-      downloadClip({} as never, clip(AUDIO_FORBIDDEN_URL), { outputDir: '/tmp' }),
+      downloadClip(clientAnswering(LOCKED), clip(AUDIO_FORBIDDEN_URL), { outputDir: '/tmp' }),
     ).rejects.toMatchObject({ code: 'download_locked' });
 
     await expect(
-      downloadClip({} as never, clip(null), { outputDir: '/tmp' }),
+      downloadClip(clientAnswering(LOCKED), clip(null), { outputDir: '/tmp' }),
     ).rejects.toMatchObject({ code: 'not_found' });
   });
 
-  it('never falls back to media_urls, whose payload is encrypted', async () => {
+  it('asks the download endpoint rather than falling back to media_urls', async () => {
     const withMedia = clip(AUDIO_FORBIDDEN_URL);
     expect(withMedia.media_urls?.[0]?.url).toContain('cloudfront.net');
-    // A fallback here would fetch 200 and write an unplayable file, which is
-    // strictly worse than failing.
+    // A fallback to media_urls would fetch 200 and write an encrypted file,
+    // which is strictly worse than failing. The sentinel must route to the
+    // sanctioned endpoint and surface its refusal.
+    let askedPath = '';
+    const spy = {
+      request: async (opts: { path: string }) => {
+        askedPath = opts.path;
+        return LOCKED;
+      },
+    } as never;
+    await expect(downloadClip(spy, withMedia, { outputDir: '/tmp' })).rejects.toMatchObject({
+      code: 'download_locked',
+    });
+    expect(askedPath).toBe(`/api/download/clip/${ID}`);
+  });
+
+  it('reports a refusal that is not a lock as an api error, not as a lock', async () => {
+    // Treating every `ok: false` as "unlock it" would send someone to spend a
+    // metered download on a clip that is refused for an unrelated reason.
     await expect(
-      downloadClip({} as never, withMedia, { outputDir: '/tmp' }),
-    ).rejects.toMatchObject({ code: 'download_locked' });
+      downloadClip(clientAnswering({ ok: false, reason: 'invalid_format' }), clip(AUDIO_FORBIDDEN_URL), {
+        outputDir: '/tmp',
+      }),
+    ).rejects.toMatchObject({ code: 'api_error' });
+  });
+
+  it('treats an unlocked clip with an empty video_url as downloadable', async () => {
+    // Real shape: unlocked clips carry `video_url: ""` while their mp3 is ready.
+    // An emptiness check alone would refuse exactly the clips already paid for.
+    const unlocked = ClipSchema.parse({
+      id: ID,
+      title: 'Paroles Ici',
+      status: 'complete',
+      model_name: 'chirp-hawk',
+      audio_url: AUDIO_FORBIDDEN_URL,
+      video_url: '',
+      created_at: '2026-09-10T14:13:00.000Z',
+      is_download_unlocked: true,
+    });
+    await expect(
+      downloadClip(clientAnswering(LOCKED), unlocked, { outputDir: '/tmp', video: true }),
+    ).rejects.toMatchObject({ code: 'download_locked' }); // not not_found
   });
 
   it('keeps media_urls typed rather than passing it through untyped', () => {

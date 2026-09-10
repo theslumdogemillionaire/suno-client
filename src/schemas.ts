@@ -112,6 +112,16 @@ export const ClipSchema = z
     image_url: z.string().nullish(),
     /** Encrypted delivery metadata, never a download source. See MediaUrlSchema. */
     media_urls: z.array(MediaUrlSchema).nullish(),
+    /**
+     * Whether a metered download has been spent on this clip.
+     *
+     * Since audio_url died this is what actually decides whether bytes are
+     * obtainable, so it belongs in the type rather than surviving untyped
+     * through `.passthrough()`. False on 48 of 50 clips in a real library: that
+     * is the normal state, not a fault.
+     */
+    is_download_unlocked: z.boolean().nullish(),
+    download_unlocked_at: z.string().nullish(),
     created_at: z.string(),
     play_count: z.number().optional(),
     upvote_count: z.number().optional(),

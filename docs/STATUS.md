@@ -159,6 +159,13 @@ and after — so a client can detect-and-skip without spending anything. And
 `downloadClip` deliberately does not fall back from `audio_url` to
 `media_urls`, because that fallback trades a clear error for a corrupt file.
 
+`downloadClip` now uses this endpoint automatically when `audio_url` is the
+sentinel, so a clip whose download is already unlocked just downloads —
+verified on two of them, and the download counter did not move. What it will
+never do on its own is call `authorize`: `authorizeDownload()` is exported and
+nothing in the library calls it, because spending a metered download has to be
+somebody's decision rather than something a retry loop can reach.
+
 ## The captcha gate does block creates (measured 2026-08-18)
 
 `POST /api/c/check` returns `{required: false}` for accounts above Suno's trust

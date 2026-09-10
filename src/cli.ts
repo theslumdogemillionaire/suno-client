@@ -43,9 +43,35 @@ const USAGE = `suno-client <command>
 Auth: SUNO_COOKIE, or a session stored by \`login\` (0600, under XDG config).
 `;
 
+const VALUED_FLAGS = ['out', 'browser', 'profile', 'model', 'title', 'tags', 'lyrics-file', 'download'];
+
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
   return i === -1 ? undefined : process.argv[i + 1];
+}
+
+/**
+ * Positional arguments, with flags AND the values they consume removed.
+ *
+ * Filtering on a leading `--` alone drops the flag and leaves its value sitting
+ * in the list, so `download <id> --out /tmp/songs` asked Suno for two clips:
+ * the real one and `/tmp/songs`. Suno answers 404 to the pair, which surfaced
+ * as "HTTP 404 on /api/feed/" — an endpoint that was perfectly fine, named as
+ * the culprit, at a moment when Suno really had just moved things. Second time
+ * this shape of bug has cost an investigation; the first was `list --limit 6`
+ * turning into `limit: null`.
+ */
+function positionals(rest: readonly string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < rest.length; i++) {
+    const item = rest[i] as string;
+    if (!item.startsWith('--')) {
+      out.push(item);
+      continue;
+    }
+    if (VALUED_FLAGS.includes(item.slice(2))) i += 1;
+  }
+  return out;
 }
 function flag(name: string): boolean {
   return process.argv.includes(`--${name}`);
@@ -320,14 +346,15 @@ async function main(): Promise<void> {
     }
 
     case 'describe': {
-      const job = await suno.describe({ prompt: rest.filter((r) => !r.startsWith('--')).join(' ') });
+      const job = await suno.describe({ prompt: positionals(rest).join(' ') });
       out({ submitted: job.ids });
       await finish(suno, job);
       return;
     }
 
     case 'download': {
-      const ids = rest.filter((r) => !r.startsWith('--'));
+      const ids = positionals(rest);
+      if (ids.length === 0) throw new SunoError({ code: 'invalid_input', message: 'download needs at least one clip id' });
       const clips = await suno.get(ids);
       const res = await suno.downloadAll(clips, { outputDir: arg('out') ?? './songs' });
       out(res);
@@ -335,12 +362,12 @@ async function main(): Promise<void> {
     }
 
     case 'trash':
-      await suno.trash(rest.filter((r) => !r.startsWith('--')));
+      await suno.trash(positionals(rest));
       out('moved to trash');
       return;
 
     case 'restore':
-      await suno.restore(rest.filter((r) => !r.startsWith('--')));
+      await suno.restore(positionals(rest));
       out('restored');
       return;
 

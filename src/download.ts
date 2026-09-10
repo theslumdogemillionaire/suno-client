@@ -7,6 +7,7 @@ import { pipeline } from 'node:stream/promises';
 import NodeID3 from 'node-id3';
 
 import { alignedLyrics } from './api/misc.js';
+import { resolveDownloadUrl, type DownloadFormat } from './api/download-unlock.js';
 import type { SunoClient } from './client.js';
 import { SunoError } from './errors.js';
 import { isFetchableUrl, type AlignedWord, type Clip } from './schemas.js';
@@ -62,38 +63,48 @@ export function clipFilename(title: string, id: string, ext: string): string {
 }
 
 /**
- * The URL to pull bytes from, or a refusal that says which of the two reasons
- * applies.
+ * Where the bytes actually come from, in the order they are worth trying.
  *
- * Those two used to be one. Until 2026-09-10 an unusable `audio_url` was an
- * empty one, so "no audio URL yet" covered both the queued clip and the broken
- * one. Suno now parks every clip's `audio_url` on a 403 sentinel — see
- * `AUDIO_FORBIDDEN_URL` — which is a non-empty string, so the old emptiness
- * check passed on every clip in the library and the caller learned nothing
- * until `fetch` came back 403 with no explanation attached.
+ * Until 2026-09-10 there was only one answer and it was `audio_url`. Now that
+ * field is a 403 sentinel on every clip in a library, so the real source is
+ * Suno's own download endpoint — the one behind the button in the web app —
+ * and reaching it is free for a clip whose download is already unlocked.
  *
- * `media_urls` is deliberately NOT consulted as a fallback: it answers 200 but
- * its payload is encrypted. Reaching for it here is the mistake this comment
- * exists to prevent.
+ * `audio_url` is still tried first, and not out of nostalgia: it costs one
+ * cheap string test, it is the only path that works without a second round
+ * trip, and if Suno ever serves audio from it again this keeps working with no
+ * change. `media_urls` is never consulted, here or anywhere: it answers 200 and
+ * its payload is encrypted, so a fallback to it would write a corrupt file
+ * instead of raising a clear error.
  */
-function pickUrl(clip: Clip, video: boolean): string {
-  const url = video ? clip.video_url : clip.audio_url;
-  if (isFetchableUrl(url)) return url;
+async function resolveSource(
+  client: SunoClient,
+  clip: Clip,
+  options: DownloadOptions,
+): Promise<{ url: string; ext: string }> {
+  const video = options.video ?? false;
+  const legacy = video ? clip.video_url : clip.audio_url;
+  if (isFetchableUrl(legacy)) return { url: legacy, ext: video ? 'mp4' : 'mp3' };
 
-  const kind = video ? 'video' : 'audio';
-  if (typeof url === 'string' && url !== '') {
+  // Nothing to download yet, as opposed to nothing we are allowed to download.
+  // Kept distinct because one resolves by waiting and the other by paying.
+  // An unlocked clip is exempt: `video_url` is empty string on clips that have
+  // a perfectly downloadable mp3, so an emptiness check alone would refuse the
+  // very clips someone has already paid to unlock.
+  const unlocked = clip.is_download_unlocked === true;
+  if (!unlocked && (legacy === undefined || legacy === null || legacy === '')) {
     throw new SunoError({
-      code: 'download_locked',
-      message:
-        `clip ${clip.id}: Suno no longer serves ${kind} from ${kind}_url (it returns 403). ` +
-        `A download has to be unlocked for this clip first, which spends one of the ` +
-        `account's metered downloads; see docs/STATUS.md.`,
+      code: 'not_found',
+      message: `clip ${clip.id} has no ${video ? 'video' : 'audio'} URL (status: ${clip.status})`,
     });
   }
-  throw new SunoError({
-    code: 'not_found',
-    message: `clip ${clip.id} has no ${kind} URL (status: ${clip.status})`,
+
+  const format: DownloadFormat = video ? 'mp4' : 'mp3';
+  const url = await resolveDownloadUrl(client, clip.id, {
+    format,
+    ...(options.signal ? { signal: options.signal } : {}),
   });
+  return { url, ext: format };
 }
 
 /** Word timings to an LRC-style SYLT payload. */
@@ -106,8 +117,7 @@ export async function downloadClip(
   clip: Clip,
   options: DownloadOptions,
 ): Promise<string> {
-  const url = pickUrl(clip, options.video ?? false);
-  const ext = options.video ? 'mp4' : 'mp3';
+  const { url, ext } = await resolveSource(client, clip, options);
   await mkdir(options.outputDir, { recursive: true });
   const target = join(options.outputDir, clipFilename(clip.title, clip.id, ext));
   // Download to a temp name and rename on success, so an interrupted transfer

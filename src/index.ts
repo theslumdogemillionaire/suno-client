@@ -48,6 +48,16 @@ export {
 } from './api/misc.js';
 
 export { artworkUrl, downloadClip, downloadClips, clipFilename, type DownloadOptions } from './download.js';
+export {
+  DOWNLOAD_FORMATS,
+  authorizeDownload,
+  downloadTicket,
+  resolveDownloadUrl,
+  type AuthorizeResult,
+  type DownloadFormat,
+  type DownloadTicket,
+} from './api/download-unlock.js';
+
 
 export {
   barLines,
