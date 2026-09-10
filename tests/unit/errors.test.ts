@@ -8,6 +8,7 @@ import {
   looksLikeRejectedInput,
   looksLikeSchemaDrift,
   SunoError,
+  looksLikeMissingRoute,
   truncate,
 } from '../../src/errors.js';
 
@@ -350,5 +351,42 @@ describe('SunoError', () => {
     const err = new SunoError({ code: 'network', message: 'connection reset', cause, retryable: true });
     expect(err.cause).toBe(cause);
     expect(Object.keys(JSON.parse(JSON.stringify(err)) as Record<string, unknown>)).not.toContain('cause');
+  });
+});
+
+describe('a 404 on a route-level path', () => {
+  it('is the endpoint moving when the web server answers in HTML', () => {
+    // The shape Suno returns for a path it has no route for.
+    expect(looksLikeMissingRoute('<!doctype html><html lang="en"><head><title>Not Found</title>')).toBe(true);
+    expect(looksLikeMissingRoute('<html><body><h1>Not Found</h1></body></html>')).toBe(true);
+  });
+
+  it('is an unknown clip when the application answers in JSON', () => {
+    // The shape /api/gen/trash returns for a clip id that does not exist, and
+    // the reason the path-only rule was wrong: this is an ordinary mistake, not
+    // an outage, and it was being reported with `alert` set.
+    expect(looksLikeMissingRoute('{"detail": "Not found."}')).toBe(false);
+    expect(looksLikeMissingRoute('{"detail":"No clip with that id"}')).toBe(false);
+    expect(looksLikeMissingRoute('[]')).toBe(false);
+  });
+
+  it('keeps the loud reading when there is no body to judge', () => {
+    // Silence is not evidence of an ordinary failure, and a moved endpoint is
+    // the one that must not be missed.
+    expect(looksLikeMissingRoute(undefined)).toBe(true);
+    expect(looksLikeMissingRoute('')).toBe(true);
+  });
+
+  it('ignores leading whitespace, which servers add freely', () => {
+    expect(looksLikeMissingRoute('\n  <!DOCTYPE html>')).toBe(true);
+    expect(looksLikeMissingRoute('  \n{"detail": "Not found."}')).toBe(false);
+  });
+
+  it('errs toward waking someone on any shape it does not recognise', () => {
+    // A bare "Not Found" from a proxy is not the application's JSON, so it is
+    // not evidence that the request merely named something absent. The rule is
+    // deliberately "only JSON is quiet" and not "only HTML is loud".
+    expect(looksLikeMissingRoute('Not Found')).toBe(true);
+    expect(looksLikeMissingRoute('upstream connect error')).toBe(true);
   });
 });

@@ -111,6 +111,39 @@ export function isRouteLevelPath(path: string): boolean {
 }
 
 /**
+ * Did the SERVER fail to find the route, or did the APP fail to find the thing?
+ *
+ * The path alone cannot tell you, and betting on the path is how a routine
+ * mistake gets escalated into a page. `/api/gen/trash` takes clip ids in its
+ * body, so it answers 404 for an id that does not exist — a completely ordinary
+ * outcome — and the path-only rule reported that as "this endpoint moved, the
+ * client needs updating", with `alert` set. Measured on 2026-09-10: one
+ * fabricated clip id produced exactly that, and cost an investigation into an
+ * endpoint that had never moved.
+ *
+ * The two are distinguishable, because they come from different layers. A
+ * missing route is answered by the web server with an HTML error page; a
+ * missing resource is answered by the application, in JSON:
+ *
+ *     route gone     <!doctype html>...<title>Not Found</title>...
+ *     unknown clip   {"detail": "Not found."}
+ *
+ * So the body decides, and the path only says which paths are worth asking
+ * about at all.
+ */
+export function looksLikeMissingRoute(body: string | undefined): boolean {
+  if (body === undefined || body === '') return true; // nothing to go on: keep the loud reading
+  const head = body.trimStart();
+  // JSON is the ONLY shape that clears the alert, rather than HTML being the
+  // only shape that raises it. Suno's application layer always answers in JSON,
+  // so anything else — an HTML error page, a bare "Not Found", a proxy's
+  // plain-text page — did not come from the application, and the loud reading
+  // is the right default for all of them. Choosing the rule this way round
+  // means an unrecognised error shape errs toward waking someone.
+  return !(head.startsWith('{') || head.startsWith('['));
+}
+
+/**
  * Suno signals a stale JWT with several different strings and two different
  * status codes. Notably `Token validation failed` arrives as a 4xx that is NOT
  * 401, while the JWT's own `exp` claim still says it is valid: their

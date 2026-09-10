@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **A 404 on a route-level path no longer pages a human for a typo.** The path
+  alone decided, so `/api/gen/trash` — which takes clip ids in its BODY, and
+  answers 404 for one that does not exist — reported an ordinary unknown id as
+  `route_gone`, "this endpoint moved, the client needs updating", with `alert`
+  set. Measured on 2026-09-10: one fabricated clip id produced exactly that and
+  cost an investigation into an endpoint that had never moved. The body decides
+  now, and only a JSON body clears the alert: Suno's application layer always
+  answers in JSON, so an HTML error page, a bare "Not Found" or anything else
+  did not come from the application. The rule is "only JSON is quiet" rather
+  than "only HTML is loud", so an unrecognised shape still errs toward waking
+  someone.
+
 ## 0.3.0 (2026-09-10)
 
 Suno moved audio delivery and metered downloads on the same day, and 0.2.0 had

@@ -15,6 +15,7 @@ import { detectDrift, type DriftReport } from './drift/detect.js';
 import type { Baseline } from './drift/shape.js';
 import {
   isRouteLevelPath,
+  looksLikeMissingRoute,
   isTokenValidationFailure,
   looksLikeAuthExpired,
   looksLikeInsufficientCredits,
@@ -456,7 +457,8 @@ export function classifyHttpError(status: number, body: string, path: string): S
     return new SunoError({ ...base, code: 'rate_limited', message: 'HTTP 429: rate limited', retryable: true });
   }
   if (status === 404) {
-    return isRouteLevelPath(path)
+    // Both conditions, never the path alone: see looksLikeMissingRoute.
+    return isRouteLevelPath(path) && looksLikeMissingRoute(body)
       ? new SunoError({
           ...base,
           code: 'route_gone',
