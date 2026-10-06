@@ -6,7 +6,6 @@
 [![tests](https://img.shields.io/badge/tests-281%20passing-brightgreen)](tests/unit)
 [![typescript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](tsconfig.json)
 [![node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=nodedotjs&logoColor=white)](package.json)
-[![schema canary](https://img.shields.io/badge/schema%20canary-0%20credits-blueviolet)](src/drift/probe.ts)
 [![license](https://img.shields.io/badge/license-WTFPL-black)](LICENSE)
 
 A typed Node client for Suno's private web API, built to survive Suno changing it.
@@ -62,8 +61,9 @@ body missing a field  -> 422 body.params.X "missing"     schema DRIFTED
 body has a wrong type -> 422 body.params.X "string_type" schema DRIFTED
 ```
 
-That is a free, exact, daily check on the one thing that actually broke last
-time. It runs in [`scripts/canary.ts`](scripts/canary.ts) and names the field.
+That is a free, exact check on the one thing that actually broke last time. It
+runs in [`scripts/canary.ts`](scripts/canary.ts), by hand or from the manually
+triggered `canary` workflow, and names the field.
 
 It keeps working when the account is captcha-gated, which is the case that could
 have made the whole idea worthless: schema errors still surface ahead of the gate,
@@ -333,7 +333,7 @@ src/
     probe.ts       the free request-schema probe
     baselines/     committed, recorded from live traffic
 scripts/
-  canary.ts        the scheduled health check
+  canary.ts        the on-demand health check
   record-baselines.ts
   smoke.ts
 docs/

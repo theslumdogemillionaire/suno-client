@@ -1,12 +1,10 @@
 name: canary
 
 # The unit suite pins our assumptions. Only this notices Suno changing theirs.
+# Manual only. Each run sends one deliberately rejected create, and a burst of
+# those trips Suno's rate limiter and can flip the account's captcha gate.
+# See docs/STATUS.md.
 on:
-  schedule:
-    # Once a day. Do NOT make this hourly: each run sends one deliberately
-    # rejected create, and a burst of those trips Suno's rate limiter and can
-    # flip the account's captcha gate. See docs/STATUS.md.
-    - cron: '17 6 * * *'
   workflow_dispatch:
     inputs:
       paid:
