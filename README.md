@@ -10,6 +10,9 @@
 
 A typed Node client for Suno's private web API, built to survive Suno changing it.
 
+It was written for [The Slumdoge Millionaire](https://www.theslumdogemillionaire.com/),
+an AI VTuber who writes songs with his Twitch chat.
+
 There is no official Suno API. This talks to the web app's endpoints with your
 browser session, which puts it outside Suno's terms of service. Read
 [docs/STATUS.md](docs/STATUS.md) before building anything on it.
