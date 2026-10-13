@@ -1,3 +1,5 @@
+import { abortedError } from '../errors.js';
+
 export interface RetryOptions {
   /** Attempts beyond the first. 0 disables retrying entirely. */
   maxRetries: number;
@@ -20,6 +22,9 @@ export function backoffDelay(attempt: number, opts: RetryOptions, random = Math.
 }
 
 export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  // Checked before the zero-delay shortcut: a jittered backoff of 0 must not
+  // let a retry slip past an abort that already happened.
+  if (signal?.aborted) return Promise.reject(abortedError(signal.reason));
   if (ms <= 0) return Promise.resolve();
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -28,14 +33,33 @@ export function sleep(ms: number, signal?: AbortSignal): Promise<void> {
     }, ms);
     const onAbort = () => {
       clearTimeout(timer);
-      reject(signal?.reason ?? new Error('aborted'));
+      reject(abortedError(signal?.reason));
     };
-    if (signal?.aborted) {
-      clearTimeout(timer);
-      reject(signal.reason ?? new Error('aborted'));
-      return;
-    }
     signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+/**
+ * Wait on a promise other callers share, but give up when THIS caller's
+ * signal fires. The shared work itself is never tied to one caller's signal:
+ * that let one caller's cancel fail everyone waiting on the same lookup.
+ */
+export function untilAborted<T>(promise: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(abortedError(signal.reason));
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(abortedError(signal.reason));
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (err: unknown) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(err);
+      },
+    );
   });
 }
 

@@ -1,4 +1,4 @@
-import type { SunoClient } from '../client.js';
+import { pathSegment, type SunoClient } from '../client.js';
 import { looksLikeRejectedInput, SunoError } from '../errors.js';
 import {
   AlignedLyricsSchema,
@@ -112,7 +112,7 @@ export async function alignedLyrics(
 ): Promise<AlignedWord[]> {
   const body = await client.request({
     method: 'GET',
-    path: `/api/gen/${clipId}/aligned_lyrics/v2/`,
+    path: `/api/gen/${pathSegment(clipId)}/aligned_lyrics/v2/`,
     schema: AlignedLyricsSchema,
     endpointKey: 'lyrics.aligned',
     ...(signal ? { signal } : {}),
@@ -123,8 +123,11 @@ export async function alignedLyrics(
 export function toLrc(words: readonly AlignedWord[]): string {
   return words
     .map((w) => {
-      const m = Math.floor(w.start_s / 60);
-      const s = (w.start_s % 60).toFixed(2).padStart(5, '0');
+      // Rounded once, in centiseconds, before splitting: rounding the seconds
+      // on their own turned 59.999 into `[00:60.00]` instead of `[01:00.00]`.
+      const cs = Math.round(w.start_s * 100);
+      const m = Math.floor(cs / 6000);
+      const s = ((cs % 6000) / 100).toFixed(2).padStart(5, '0');
       return `[${String(m).padStart(2, '0')}:${s}] ${w.word}`;
     })
     .join('\n');
@@ -175,7 +178,7 @@ export async function setMetadata(
 
   await client.request({
     method: 'POST',
-    path: `/api/gen/${clipId}/set_metadata/`,
+    path: `/api/gen/${pathSegment(clipId)}/set_metadata/`,
     body,
     endpointKey: 'clip.setMetadata',
     ...(options.signal ? { signal: options.signal } : {}),
@@ -190,7 +193,7 @@ export async function setVisibility(
 ): Promise<void> {
   await client.request({
     method: 'POST',
-    path: `/api/gen/${clipId}/set_visibility/`,
+    path: `/api/gen/${pathSegment(clipId)}/set_visibility/`,
     body: { is_public: isPublic },
     endpointKey: 'clip.setVisibility',
     ...(signal ? { signal } : {}),
@@ -204,7 +207,7 @@ export async function getPersona(
 ): Promise<PersonaInfo> {
   const body = await client.request({
     method: 'GET',
-    path: `/api/persona/get-persona-paginated/${personaId}/`,
+    path: `/api/persona/get-persona-paginated/${pathSegment(personaId)}/`,
     query: { page: 0 },
     schema: PersonaResponseSchema,
     endpointKey: 'persona.get',
@@ -229,8 +232,11 @@ export async function requestStems(
 ): Promise<{ accepted: true; raw: unknown; clips: Clip[] }> {
   const raw = await client.request({
     method: 'POST',
-    path: `/api/edit/stems/${clipId}`,
+    path: `/api/edit/stems/${pathSegment(clipId)}`,
     endpointKey: 'stems',
+    // Never retry: a timeout or a 5xx after Suno accepted the job would start
+    // a second separation, and another Vocals/Instrumental pair, per replay.
+    retry: { maxRetries: 0 },
     ...(signal ? { signal } : {}),
   });
 

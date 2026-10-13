@@ -9,7 +9,7 @@ import { SunoError } from './errors.js';
 /**
  * Where the session lives between processes.
  *
- * This holds a ~7 day credential for a paid account, so the file is written
+ * This holds a session credential good for about a year, so the file is written
  * 0600 and written atomically: a half-flushed auth.json after a crash would
  * look like a corrupt session and send the caller chasing a phantom auth bug.
  */

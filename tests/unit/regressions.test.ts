@@ -106,10 +106,14 @@ describe('filenames survive real titles', () => {
   });
 
   it('caps a very long title so the write does not fail ENAMETOOLONG', () => {
-    const name = clipFilename('x'.repeat(300), 'abcdefgh12345678', 'mp3');
-    // Room left for the ".part" suffix the download writes to first.
-    expect(name.length).toBeLessThan(240);
-    expect(name.endsWith('-abcdefgh.mp3')).toBe(true);
+    // Bytes, not characters: the filesystem limit is 255 bytes for the scratch
+    // name the download writes first, `<name>.<uuid>.part`. An 80-character
+    // CJK title used to pass a character cap and fail at 258 bytes.
+    for (const title of ['x'.repeat(300), '\u6771'.repeat(300), '\u00e9'.repeat(300)]) {
+      const name = clipFilename(title, 'abcdefgh12345678', 'mp3');
+      expect(Buffer.byteLength(`${name}.${'0'.repeat(36)}.part`)).toBeLessThanOrEqual(255);
+      expect(name.endsWith('-abcdefgh.mp3')).toBe(true);
+    }
   });
 
   it('still keeps the id suffix when the title slugs away to nothing', () => {

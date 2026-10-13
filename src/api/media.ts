@@ -1,4 +1,4 @@
-import type { SunoClient } from '../client.js';
+import { pathSegment, type SunoClient } from '../client.js';
 import { z } from 'zod';
 
 /**
@@ -67,7 +67,7 @@ export async function getDownbeats(
 ): Promise<Downbeats> {
   return client.request({
     method: 'GET',
-    path: `/api/gen/${clipId}/downbeats`,
+    path: `/api/gen/${pathSegment(clipId)}/downbeats`,
     schema: DownbeatsSchema,
     endpointKey: 'media.downbeats',
     ...(signal ? { signal } : {}),
@@ -82,7 +82,7 @@ export async function getMusicalKey(
 ): Promise<MusicalKey> {
   return client.request({
     method: 'GET',
-    path: `/api/gen/${clipId}/key`,
+    path: `/api/gen/${pathSegment(clipId)}/key`,
     schema: MusicalKeySchema,
     endpointKey: 'media.key',
     ...(signal ? { signal } : {}),
@@ -102,7 +102,7 @@ export async function getWaveform(
 ): Promise<Waveform> {
   return client.request({
     method: 'GET',
-    path: `/api/gen/${clipId}/waveform-aggregates`,
+    path: `/api/gen/${pathSegment(clipId)}/waveform-aggregates`,
     schema: WaveformSchema,
     endpointKey: 'media.waveform',
     ...(signal ? { signal } : {}),
@@ -119,7 +119,7 @@ export async function getStemPages(
 ): Promise<number> {
   const body = await client.request({
     method: 'GET',
-    path: `/api/clip/${clipId}/stems/pages`,
+    path: `/api/clip/${pathSegment(clipId)}/stems/pages`,
     schema: StemPagesSchema,
     endpointKey: 'media.stemPages',
     ...(signal ? { signal } : {}),

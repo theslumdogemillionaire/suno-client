@@ -14,6 +14,7 @@ import {
 import { detectDrift, type DriftReport } from './drift/detect.js';
 import type { Baseline } from './drift/shape.js';
 import {
+  abortedError,
   isRouteLevelPath,
   looksLikeMissingRoute,
   isTokenValidationFailure,
@@ -155,7 +156,13 @@ export class SunoClient {
       // over the top makes it look expired again - defeating the single-flight
       // and firing a second Clerk exchange for one stale token.
       if (!this.loaded) {
-        this.auth = loaded;
+        // A stored session without a device id (a bare-cookie login, or one
+        // saved by an older version) adopts this process's fallback, which the
+        // next save persists. Otherwise every process sent a fresh random id.
+        this.auth =
+          loaded !== undefined && loaded.deviceId === undefined
+            ? { ...loaded, deviceId: this.fallbackDeviceId }
+            : loaded;
         this.loaded = true;
       }
     }
@@ -176,19 +183,24 @@ export class SunoClient {
       // Another caller may have refreshed while we queued.
       if (!isJwtExpired(current.jwt)) return;
       if (current.sessionId !== undefined) {
+        let jwt: string | undefined;
         try {
-          const jwt = await clerkRefreshJwt(
+          jwt = await clerkRefreshJwt(
             this.fetchImpl,
             current.clerkClientCookie,
             current.sessionId,
             signal,
           );
-          this.auth = { ...current, jwt };
-          await this.store.save(this.auth);
+        } catch (err) {
+          // A stale session id is recoverable: Clerk refuses it with a 4xx,
+          // and a full exchange finds the live one. Anything else - Clerk
+          // throttling or failing, the network, an abort - says nothing about
+          // the session id, and falling through only hit Clerk again, harder.
+          if (!isStaleSessionError(err)) throw err;
+        }
+        if (jwt !== undefined) {
+          await this.adoptRefreshed(current, { jwt });
           return;
-        } catch {
-          // A stale session id is recoverable: fall through to a full exchange
-          // rather than declaring the cookie dead.
         }
       }
       const { sessionId, jwt } = await clerkTokenExchange(
@@ -196,20 +208,40 @@ export class SunoClient {
         current.clerkClientCookie,
         signal,
       );
-      this.auth = { ...current, sessionId, jwt };
-      await this.store.save(this.auth);
+      await this.adoptRefreshed(current, { sessionId, jwt });
     });
 
     const refreshed = this.auth;
-    if (!refreshed?.jwt) {
+    if (!refreshed) {
+      throw new SunoError({ code: 'auth_missing', message: 'the session was cleared while this request refreshed it' });
+    }
+    if (!refreshed.jwt) {
       throw new SunoError({ code: 'auth_dead', message: 'JWT refresh produced no token', alert: true });
     }
     return refreshed;
   }
 
-  /** Drop the cached JWT so the next request mints a fresh one. */
-  private async invalidateJwt(): Promise<void> {
-    if (!this.auth) return;
+  /**
+   * Keep a freshly minted token, unless the session changed while Clerk was
+   * answering. A logout, or a login with another cookie, made during the round
+   * trip must win: writing the captured state back resurrected the old session.
+   */
+  private async adoptRefreshed(from: AuthState, update: Partial<AuthState>): Promise<void> {
+    if (this.auth === undefined || this.auth.clerkClientCookie !== from.clerkClientCookie) return;
+    this.auth = { ...this.auth, ...update };
+    await this.store.save(this.auth);
+  }
+
+  /**
+   * Drop the JWT Suno just rejected, so the next attempt mints a fresh one.
+   *
+   * Only that JWT. A 401 for a request sent with the old token can land after
+   * a concurrent request already refreshed, and clearing whatever was current
+   * threw that fresh token away and fired another Clerk exchange per
+   * straggler: the herd the single-flight exists to prevent.
+   */
+  private async invalidateJwt(rejected: string | undefined): Promise<void> {
+    if (!this.auth || rejected === undefined || this.auth.jwt !== rejected) return;
     this.auth = { ...this.auth, jwt: undefined };
     await this.store.save(this.auth).catch(() => undefined);
   }
@@ -273,26 +305,28 @@ export class SunoClient {
     for (let attempt = 0; ; attempt++) {
       const started = Date.now();
       let status: number | undefined;
+      // One budget for the whole attempt: the session refresh, the headers AND
+      // the body. Clearing the timer once headers arrived left a stalled body,
+      // and every Clerk call, waiting on undici's 300s defaults or forever.
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(new Error('request timeout')), this.timeoutMs);
+      const onOuterAbort = () => controller.abort(options.signal?.reason);
+      options.signal?.addEventListener('abort', onOuterAbort, { once: true });
       try {
-        const auth = options.skipAuth ? undefined : await this.ensureAuth(options.signal);
+        // An 'abort' listener added to a signal that already fired never runs,
+        // so without these checks a create cancelled before it was sent - or
+        // during the session refresh - still went out and was billed.
+        options.signal?.throwIfAborted();
+        const auth = options.skipAuth ? undefined : await this.ensureAuth(controller.signal);
+        options.signal?.throwIfAborted();
         const hasBody = options.body !== undefined;
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(new Error('request timeout')), this.timeoutMs);
-        const onOuterAbort = () => controller.abort(options.signal?.reason);
-        options.signal?.addEventListener('abort', onOuterAbort, { once: true });
 
-        let res: Response;
-        try {
-          res = await this.fetchImpl(this.buildUrl(options.path, options.query), {
-            method: options.method,
-            headers: this.headers(auth, hasBody),
-            ...(hasBody ? { body: JSON.stringify(options.body) } : {}),
-            signal: controller.signal,
-          });
-        } finally {
-          clearTimeout(timer);
-          options.signal?.removeEventListener('abort', onOuterAbort);
-        }
+        const res = await this.fetchImpl(this.buildUrl(options.path, options.query), {
+          method: options.method,
+          headers: this.headers(auth, hasBody),
+          ...(hasBody ? { body: JSON.stringify(options.body) } : {}),
+          signal: controller.signal,
+        });
         status = res.status;
 
         if (!res.ok) {
@@ -302,7 +336,7 @@ export class SunoClient {
           // the request once before it counts against the retry budget.
           if (err.code === 'auth_expired' && !authRetried && !options.skipAuth) {
             authRetried = true;
-            await this.invalidateJwt();
+            await this.invalidateJwt(auth?.jwt);
             this.emitRequest({ method: options.method, path: options.path, status, durationMs: Date.now() - started, attempt, error: err });
             continue;
           }
@@ -324,6 +358,9 @@ export class SunoClient {
         }
 
         const raw = res.status === 204 ? null : await res.json().catch((cause: unknown) => {
+          // Only a body that arrived and is not JSON is invalid. A timeout, an
+          // abort or a connection reset mid-body is transport, and stays so.
+          if (!(cause instanceof SyntaxError)) throw cause;
           throw new SunoError({
             code: 'response_invalid',
             message: `response was not JSON (HTTP ${res.status})`,
@@ -358,9 +395,15 @@ export class SunoClient {
         this.emitRequest({ method: options.method, path: options.path, status, durationMs: Date.now() - started, attempt });
         return parsed.data;
       } catch (err) {
-        const wrapped = toSunoError(err, options.path);
+        // Decided by the caller's signal, not by the error's name: an abort
+        // reason can be any value, and none of them is worth retrying.
+        const wrapped =
+          options.signal?.aborted === true
+            ? abortedError(options.signal.reason, options.path)
+            : toSunoError(err, options.path);
         this.emitRequest({ method: options.method, path: options.path, status, durationMs: Date.now() - started, attempt, error: wrapped });
         if (!wrapped.retryable || attempt >= retry.maxRetries) throw wrapped;
+        clearTimeout(timer);
         try {
           await sleep(backoffDelay(attempt, retry), options.signal);
         } catch (abort) {
@@ -369,6 +412,9 @@ export class SunoClient {
           // a SunoError. Callers branching on err.code would read undefined.
           throw toSunoError(abort, options.path);
         }
+      } finally {
+        clearTimeout(timer);
+        options.signal?.removeEventListener('abort', onOuterAbort);
       }
     }
   }
@@ -404,9 +450,13 @@ export class SunoClient {
       normalized.clerkClientCookie,
       signal,
     );
+    // A bare `__client` carries no device id. Keep the one this installation
+    // already has, or persist the fallback, rather than storing none and
+    // sending a fresh random id from every process.
+    const previous = this.loaded ? this.auth : await this.store.load().catch(() => undefined);
     this.auth = {
       clerkClientCookie: normalized.clerkClientCookie,
-      deviceId: normalized.deviceId,
+      deviceId: normalized.deviceId ?? previous?.deviceId ?? this.fallbackDeviceId,
       sessionId,
       jwt,
     };
@@ -420,6 +470,30 @@ export class SunoClient {
     this.loaded = true;
     await this.store.clear();
   }
+}
+
+/**
+ * One caller-supplied id, made safe to put in a URL path.
+ *
+ * Ids reach these paths from callers - a chat bot passes along whatever a
+ * viewer typed - and `new URL()` resolves `..` while fetch drops `#...`.
+ * Unencoded, `../billing/info/#` turned a waveform lookup into an
+ * authenticated read of the account's billing. Encoding keeps an id inside
+ * its one segment; `.` and `..` are refused because encoding leaves them
+ * dot segments.
+ */
+export function pathSegment(id: string): string {
+  if (id === '' || id === '.' || id === '..') {
+    throw new SunoError({ code: 'invalid_input', message: `not a usable id: ${JSON.stringify(id)}` });
+  }
+  return encodeURIComponent(id);
+}
+
+/** Clerk refusing a session id (4xx other than throttling), as opposed to Clerk having trouble. */
+function isStaleSessionError(err: unknown): boolean {
+  if (!(err instanceof SunoError)) return false;
+  if (err.code === 'auth_dead') return true;
+  return err.status !== undefined && err.status >= 400 && err.status < 500 && err.status !== 429;
 }
 
 export function classifyHttpError(status: number, body: string, path: string): SunoError {

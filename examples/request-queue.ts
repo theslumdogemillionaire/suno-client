@@ -70,13 +70,16 @@ export class SongQueue {
   }
 
   private async run(request: SongRequest): Promise<void> {
+    // Set once the create is out. A pause before that keeps the request for
+    // resume(); after it, replaying the request would bill a second song.
+    let created = false;
     try {
       // Two preflights, both cheap, both preventing a wasted create. A gated
       // account cannot generate at all, and only a human at suno.com can clear
       // it, so discovering that here beats discovering it after the submit.
       const credits = await this.suno.credits();
       if (credits.left < (this.options.creditFloor ?? 50)) {
-        this.paused = true;
+        this.hold(request);
         await this.options.alert(`credits exhausted: ${credits.left} left, queue paused`);
         await this.options.say('out of credits for now, song requests are paused.');
         return;
@@ -84,7 +87,7 @@ export class SongQueue {
 
       const gate = await this.suno.captchaCheck();
       if (gate.required) {
-        this.paused = true;
+        this.hold(request);
         await this.options.alert('Suno is captcha-gating this account; generate one song by hand at suno.com to clear it');
         await this.options.say('song requests are paused, back shortly.');
         return;
@@ -93,6 +96,7 @@ export class SongQueue {
       await this.options.say(`@${request.requester} writing "${request.prompt}"...`);
 
       const job = await this.suno.describe({ prompt: request.prompt });
+      created = true;
 
       for await (const update of job.watch({ timeoutMs: 480_000 })) {
         for (const clip of update.changed) {
@@ -123,11 +127,21 @@ export class SongQueue {
         }
       }
     } catch (err) {
-      await this.handle(request, err);
+      await this.handle(request, err, created);
     }
   }
 
-  private async handle(request: SongRequest, err: unknown): Promise<void> {
+  /**
+   * Pause, putting this request back at the head of the queue so resume()
+   * runs it first. Pausing used to drop it: the viewer had been told
+   * "queued", and it was never run nor mentioned again.
+   */
+  private hold(request: SongRequest): void {
+    this.paused = true;
+    this.pending.unshift(request);
+  }
+
+  private async handle(request: SongRequest, err: unknown, created: boolean): Promise<void> {
     if (!(err instanceof SunoError)) {
       await this.options.alert(`unexpected failure: ${String(err)}`);
       return;
@@ -135,8 +149,13 @@ export class SongQueue {
 
     // The whole point of the two booleans: `alert` decides whether a human is
     // needed, and it is independent of whether the queue can keep going.
+    // Kept for resume() only when Suno refused it before creating anything.
+    // `response_invalid` can follow a create that was accepted and charged.
+    const keep = !created && err.code !== 'response_invalid';
+
     if (err.alert) {
-      this.paused = true;
+      if (keep) this.hold(request);
+      else this.paused = true;
       await this.options.alert(`[${err.code}] ${err.message}`, err);
       await this.options.say('song requests are paused, my human has been poked.');
       return;
@@ -149,7 +168,10 @@ export class SongQueue {
         await this.options.say(`@${request.requester} Suno would not write that one. Try rephrasing.`);
         return;
       case 'insufficient_credits':
-        this.paused = true;
+        if (keep) this.hold(request);
+        else this.paused = true;
+        // Someone has to top up and call resume(), so say so to a human too.
+        await this.options.alert('out of credits: queue paused until resume()', err);
         await this.options.say('out of credits, song requests are paused.');
         return;
       case 'rate_limited':

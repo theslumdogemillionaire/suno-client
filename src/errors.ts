@@ -92,6 +92,26 @@ export function truncate(s: string, max: number): string {
 }
 
 /**
+ * A cancellation the caller asked for, as a SunoError.
+ *
+ * Never retryable, whatever the reason looks like: `AbortSignal.timeout()`
+ * aborts with a TimeoutError, a caller may abort with any value at all, and
+ * retrying either would resurrect work the caller just killed. Also what every
+ * abortable wait rejects with, so an abort never escapes as a bare DOMException
+ * whose numeric `code` reads as 20 to a caller branching on `err.code`.
+ */
+export function abortedError(reason: unknown, path?: string): SunoError {
+  const detail = reason instanceof Error ? reason.message : String(reason ?? 'aborted');
+  return new SunoError({
+    code: reason instanceof Error && reason.name === 'TimeoutError' ? 'timeout' : 'network',
+    message: path === undefined ? `aborted: ${detail}` : `${path}: ${detail}`,
+    ...(path !== undefined ? { path } : {}),
+    retryable: false,
+    cause: reason,
+  });
+}
+
+/**
  * Route-level 404s mean the endpoint moved; ID-addressed 404s mean the caller
  * passed a bad id. Retrying helps in neither case, but only the first is a bug
  * in this library, so only the first should page anyone.
@@ -155,6 +175,11 @@ export function looksLikeMissingRoute(body: string | undefined): boolean {
  */
 const AUTH_EXPIRED_PATTERNS = [
   'token validation failed',
+  // The structured form, and the only one in the measured captcha-gate body:
+  // `{"error_type": "token_validation_failed", "detail": "We couldn't verify
+  // your request..."}` (docs/STATUS.md). Without it that 422 never reached the
+  // refresh-then-`captcha_required` path and surfaced as a plain api_error.
+  'token_validation_failed',
   'jwt expired',
   'jwt is expired',
   'invalid jwt',

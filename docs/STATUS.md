@@ -139,7 +139,9 @@ optional as far as the server is concerned.
   `metadata.create_mode: "simple"` were all in the capture and none are
   required. `gpt_description_prompt` and `duration` the client already sends
   where they belong; the rest are unused and stay that way until something
-  actually needs them. `extraFields` exists for exactly this case.
+  actually needs them. `extraFields` exists for exactly this case, and a
+  `metadata` object in it is merged into the generated one key by key (until
+  0.5.0 it replaced it, dropping `create_mode` and the session token).
 
 Separately, and worth knowing before trusting `DEFAULT_MODEL`: the Pro account
 measured lists `chirp-hawk`, `chirp-hawk-wild` and `chirp-goose` as usable, with
@@ -251,10 +253,16 @@ What is actually known:
   paid account was that it cleared itself within about forty minutes with no
   manual intervention.
 - `preflightCaptcha` still defaults to **off**, now for a narrower reason: a
-  gated create costs nothing and already reports `captcha_required` with an
-  actionable message, so the preflight saves a round trip rather than credits -
-  and a flag that flickers would stall a bot on a false positive. Turn it on if
-  you would rather fail fast.
+  gated create costs nothing and reports `captcha_required` with an actionable
+  message, so the preflight saves a round trip rather than credits - and a flag
+  that flickers would stall a bot on a false positive. Turn it on if you would
+  rather fail fast.
+- Getting there costs one JWT refresh and one replay: the gated body carries
+  only the structured `token_validation_failed`, and the client tells it apart
+  from a stale JWT by outcome. Until 0.5.0 it matched only the spaced
+  `Token validation failed`, so the measured body above slipped past and
+  surfaced as a plain `api_error`. A side effect: a schema probe now sends two
+  rejected creates per run, not one.
 
 To be careful anyway: the probe defaults to **one** variant per run, spaced 15s, rotated
 daily by `variantForDay()`. Do not run `--all-variants` on a schedule, and never
@@ -368,11 +376,21 @@ quiet enough to be worth reading took two fixes:
    container exists, so every path beneath it is absent. Without a container
    count that reads as a mass deletion.
 
+3. **A field that holds what we read is never optional.** A renamed `clips`
+   left every consumed path below it absent, which point 2 skips, and `clips`
+   itself sat under the sample minimum. The detector reported three `info`
+   lines while the schema defaulted the array to `[]` and the library looked
+   empty. Such a field now counts as required whenever every sample had it,
+   and its absence is an `error`.
+
 Baselines need at least 5 samples per container before a field counts as
-required. Re-record after any verified client change:
+required, and the recorder refuses to write one below that rather than ship a
+baseline that cannot see removals. Re-record after any verified client change,
+then compile the result into the module the client actually loads:
 
 ```
 npx tsx scripts/record-baselines.ts
+npm run gen:baselines
 ```
 
 ## What the tests can and cannot catch

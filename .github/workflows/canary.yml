@@ -40,8 +40,9 @@ jobs:
       - name: Explain a failure
         if: failure()
         run: |
-          echo "The Suno API moved, or the session cookie expired."
-          echo "Cookies last about 7 days: refresh the SUNO_COOKIE secret first."
+          echo "The Suno API moved, or the session died."
+          echo "Cookies last about a year, so a dead session is usually one rotated by"
+          echo "signing in elsewhere: refresh the SUNO_COOKIE secret if auth failed."
           echo "If the session is fine, read the probe output above: it names the"
           echo "endpoint and field that changed. Fix, then re-record baselines with"
-          echo "  npx tsx scripts/record-baselines.ts"
+          echo "  npx tsx scripts/record-baselines.ts && npm run gen:baselines"

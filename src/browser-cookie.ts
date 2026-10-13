@@ -357,7 +357,18 @@ async function readCookieRows(cookiesPath: string, name: string): Promise<Cookie
     // the CommonJS pass — it fails the build outright rather than at runtime.
     // Loading it lazily also means importing this module costs nothing on a
     // Node that has no node:sqlite, which is the whole point of doing it here.
-    const { DatabaseSync } = await import('node:sqlite');
+    let DatabaseSync: typeof import('node:sqlite').DatabaseSync;
+    try {
+      ({ DatabaseSync } = await import('node:sqlite'));
+    } catch (err) {
+      // Older 22.x lines only expose it behind --experimental-sqlite, which
+      // read as "No such built-in module" on every profile.
+      throw new SunoError({
+        code: 'invalid_input',
+        message: `reading browser cookies needs node:sqlite, available from Node 22.13 (this is ${process.version}); upgrade, or paste the cookie: suno-client login --stdin`,
+        cause: err,
+      });
+    }
     const db = new DatabaseSync(copy, { readOnly: true });
     try {
       // `cast(... as real)` is not decoration. Chromium stores expiry as

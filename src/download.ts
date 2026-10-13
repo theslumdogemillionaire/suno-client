@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { mkdir, rename, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -10,7 +11,7 @@ import { alignedLyrics } from './api/misc.js';
 import { resolveDownloadUrl, type DownloadFormat } from './api/download-unlock.js';
 import { playTrack } from './api/mango.js';
 import type { SunoClient } from './client.js';
-import { SunoError } from './errors.js';
+import { abortedError, SunoError, type SunoErrorCode } from './errors.js';
 import { isFetchableUrl, type AlignedWord, type Clip } from './schemas.js';
 
 export type DownloadSource = 'download' | 'playback';
@@ -46,9 +47,9 @@ export interface DownloadOptions {
   onProgress?: (info: { clipId: string; bytes: number }) => void;
 }
 
-/** Filesystems cap a path component at 255 bytes; leave room for the id
- * suffix, the extension and the `.part` we write to first. */
-const MAX_SLUG_LENGTH = 180;
+/** Filesystems cap a path component at 255 BYTES; leave room for the id
+ * suffix, the extension and the unique `.<uuid>.part` we write to first. */
+const MAX_SLUG_BYTES = 180;
 
 /**
  * `<title-slug>-<first 8 of id>.<ext>`.
@@ -69,7 +70,19 @@ export function clipFilename(title: string, id: string, ext: string): string {
       slug += '-';
     }
   }
-  if (slug.length > MAX_SLUG_LENGTH) slug = slug.slice(0, MAX_SLUG_LENGTH);
+  if (Buffer.byteLength(slug) > MAX_SLUG_BYTES) {
+    // Cut by UTF-8 bytes, whole code points only. Counting UTF-16 units let an
+    // 80-character CJK title past 255 bytes (ENAMETOOLONG on every download)
+    // and could split a surrogate pair.
+    let cut = '';
+    let bytes = 0;
+    for (const ch of slug) {
+      bytes += Buffer.byteLength(ch);
+      if (bytes > MAX_SLUG_BYTES) break;
+      cut += ch;
+    }
+    slug = cut;
+  }
   while (slug.endsWith('-')) slug = slug.slice(0, -1);
   const shortId = id.slice(0, 8);
   return slug === '' ? `${shortId}.${ext}` : `${slug}-${shortId}.${ext}`;
@@ -139,7 +152,7 @@ export async function downloadClip(
   const target = join(options.outputDir, clipFilename(clip.title, clip.id, ext));
   // Download to a temp name and rename on success, so an interrupted transfer
   // never leaves a truncated mp3 that looks like a finished download.
-  const tmp = `${target}.part`;
+  const tmp = scratchPath(target);
 
   const res = await fetch(url, options.signal ? { signal: options.signal } : {});
   if (!res.ok || !res.body) {
@@ -199,7 +212,7 @@ async function downloadPlayback(
   await mkdir(options.outputDir, { recursive: true });
   const playing = await playTrack(client, clip, options.signal ? { signal: options.signal } : {});
   const target = join(options.outputDir, clipFilename(clip.title, clip.id, playing.ext));
-  const tmp = `${target}.part`;
+  const tmp = scratchPath(target);
 
   let bytes = 0;
   playing.stream.on('data', (chunk: Buffer) => {
@@ -220,6 +233,16 @@ async function downloadPlayback(
   }
 
   return target;
+}
+
+/**
+ * A scratch name unique to this download. A fixed `<target>.part` was shared by
+ * two concurrent downloads of one clip: the second rename failed ENOENT after
+ * the first consumed it, and an aborted one's cleanup deleted the other's
+ * file mid-transfer. With one each, the last rename simply wins.
+ */
+function scratchPath(target: string): string {
+  return `${target}.${randomUUID()}.part`;
 }
 
 /** Prefer the large art; the thumbnail is what `image_url` gives you. */
@@ -286,14 +309,24 @@ export async function downloadClips(
   client: SunoClient,
   clips: readonly Clip[],
   options: DownloadOptions,
-): Promise<{ downloaded: string[]; failed: Array<{ clipId: string; error: string }> }> {
+): Promise<{ downloaded: string[]; failed: Array<{ clipId: string; error: string; code?: SunoErrorCode }> }> {
   const downloaded: string[] = [];
-  const failed: Array<{ clipId: string; error: string }> = [];
+  const failed: Array<{ clipId: string; error: string; code?: SunoErrorCode }> = [];
   for (const clip of clips) {
     try {
       downloaded.push(await downloadClip(client, clip, options));
     } catch (err) {
-      failed.push({ clipId: clip.id, error: err instanceof Error ? err.message : String(err) });
+      // A refusal about one clip (locked, not rendered yet) is the normal state
+      // of a library and belongs in `failed`. A cancel, or anything that needs
+      // a human - a dead session, a moved route, a changed response - is not
+      // about this clip: every remaining one would fail the same way, so stop.
+      if (options.signal?.aborted === true) throw abortedError(options.signal.reason);
+      if (err instanceof SunoError && err.alert) throw err;
+      failed.push({
+        clipId: clip.id,
+        error: err instanceof Error ? err.message : String(err),
+        ...(err instanceof SunoError ? { code: err.code } : {}),
+      });
     }
   }
   return { downloaded, failed };

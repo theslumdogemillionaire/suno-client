@@ -23,7 +23,7 @@
  */
 import { z } from 'zod';
 
-import type { SunoClient } from '../client.js';
+import { pathSegment, type SunoClient } from '../client.js';
 import { SunoError } from '../errors.js';
 import { sleep } from '../internal/retry.js';
 
@@ -77,7 +77,7 @@ export function downloadTicket(
 ): Promise<DownloadTicket> {
   return client.request({
     method: 'GET',
-    path: `${DOWNLOAD_CLIP_PATH}/${clipId}`,
+    path: `${DOWNLOAD_CLIP_PATH}/${pathSegment(clipId)}`,
     query: { format },
     schema: DownloadTicketSchema,
     endpointKey: 'download.clip',

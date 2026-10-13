@@ -5,7 +5,7 @@
 [![module formats](https://img.shields.io/badge/ESM%20%2B%20CJS-dual-informational)](package.json)
 [![tests](https://img.shields.io/badge/tests-281%20passing-brightgreen)](tests/unit)
 [![typescript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](tsconfig.json)
-[![node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=nodedotjs&logoColor=white)](package.json)
+[![node](https://img.shields.io/badge/node-%E2%89%A522.13-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![license](https://img.shields.io/badge/license-WTFPL-black)](LICENSE)
 
 A typed Node client for Suno's private web API, built to survive Suno changing it.
@@ -127,6 +127,16 @@ requests that can never succeed.
 | `schema_drift` | no | yes | Suno changed the request schema |
 | `route_gone` | no | yes | an endpoint moved |
 
+A cancel through your own `AbortSignal` comes back as `network` (`timeout` for
+`AbortSignal.timeout()`) with `retryable: false`, and nothing is sent once the
+signal has fired: a create cancelled during the model lookup is not submitted.
+`timeoutMs` covers a whole attempt, session refresh and response body included.
+
+Bulk downloads follow the same split. `downloadAll` and `downloadPlaylist` record
+a refusal about one clip (`download_locked`, nothing rendered yet) in `failed`,
+with its `code`, and carry on; a cancel or an alert-class error stops the run and
+throws, since every remaining clip would fail the same way.
+
 ### 4. It works on any account tier
 
 Verified live on both a subscription and a Free account. That distinction is not
@@ -159,7 +169,8 @@ session died.
 npm install suno-client
 ```
 
-Node 22+. Ships both ESM and CommonJS, so `import` and `require` both work, with
+Node 22.13+ (`login --from-browser` reads the cookie database with `node:sqlite`,
+which older 22.x lines only expose behind `--experimental-sqlite`). Ships both ESM and CommonJS, so `import` and `require` both work, with
 types resolving correctly from either. Verified with `publint` and
 `are-the-types-wrong`, and by installing the tarball into a CJS project and an
 ESM project in CI.
@@ -200,9 +211,10 @@ otherwise the command stops and asks which, listing each profile with its client
 id. Expiry only ever breaks ties within one account.
 
 The device id travels with the session. `--from-browser` lifts the profile's own
-`ajs_anonymous_id` too and hands `login` a full `Cookie:` header, because a bare
-`__client` leaves `deviceId` unset and the client then invents a fresh UUID in
-every process — the unstable fingerprint its own header comments warn about.
+`ajs_anonymous_id` too and hands `login` a full `Cookie:` header, which is the
+most faithful value. A bare `__client` keeps the device id already stored, or
+stores one generated once for this installation, so it never changes from one
+process to the next — the unstable fingerprint the header comments warn about.
 
 The manual route still works, and is the only one on Windows: log into
 suno.com, devtools, Application, Cookies, **`auth.suno.com`** (not `suno.com` —
@@ -240,7 +252,7 @@ Locally, if you prefer:
 
 ```bash
 npm test
-npm run build               # also copies the drift baselines into dist/
+npm run build               # dual ESM + CJS into dist/, baselines compiled in
 npm run canary
 npm run canary -- --paid    # adds one real generation, 10 credits
 npm run smoke               # live read-only check
@@ -249,10 +261,15 @@ npm run smoke               # live read-only check
 There is also a small CLI for operational work, once built:
 
 ```bash
-node dist/cli.js credits
-node dist/cli.js list 10
-node dist/cli.js generate --title T --tags "pop, warm" --lyrics-file song.txt --wait --download ./songs
+node dist/esm/cli.js credits
+node dist/esm/cli.js list 10
+node dist/esm/cli.js generate --title T --tags "pop, warm" --lyrics-file song.txt --wait --download ./songs
 ```
+
+Exit codes: `0` done, `1` an ordinary failure (including a download that failed
+for any clip), `2` a human needs to act — dead session, moved endpoint, changed
+response. `login`, `logout` and `session` always act on the stored session, even
+with `SUNO_COOKIE` set; `login` still reads its cookie from there.
 
 ## For a live consumer (bots, overlays, queues)
 
@@ -274,7 +291,9 @@ for (const { clip, reason } of job.failed) {
 }
 ```
 
-Jobs survive a restart: `suno.job(ids)` rehydrates one from clip ids you stored.
+Jobs survive a restart: `suno.job(ids)` rehydrates one from clip ids you stored,
+and keeps waiting on every one of them, including a clip the feed does not show
+yet.
 
 ### One call for everything an overlay needs
 

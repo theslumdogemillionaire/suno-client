@@ -123,7 +123,9 @@ export interface BaseGenerateOptions {
   /** hCaptcha solution, only when `captchaCheck()` says one is required. */
   captchaToken?: string;
   /**
-   * Merged into the wire body last, overwriting anything above it.
+   * Merged into the wire body last, overwriting anything above it. `metadata`
+   * is merged key by key rather than replaced, so adding one metadata field
+   * keeps `create_mode` and the other required ones.
    *
    * This exists because Suno adds required fields without warning, and the
    * difference between a five-minute fix and a release cycle is whether you can
@@ -224,7 +226,7 @@ export function buildCustomBody(options: CustomGenerateOptions): GenerateWireBod
   body.negative_tags = options.negativeTags ?? '';
   body.persona_id = options.personaId ?? null;
   body.token = options.captchaToken ?? null;
-  return Object.assign(body, options.extraFields);
+  return applyExtraFields(body, options.extraFields);
 }
 
 export function buildDescribeBody(options: DescribeGenerateOptions): GenerateWireBody {
@@ -240,7 +242,30 @@ export function buildDescribeBody(options: DescribeGenerateOptions): GenerateWir
   body.negative_tags = options.negativeTags ?? '';
   body.persona_id = options.personaId ?? null;
   body.token = options.captchaToken ?? null;
-  return Object.assign(body, options.extraFields);
+  return applyExtraFields(body, options.extraFields);
+}
+
+/**
+ * Merge `extraFields` into a built body.
+ *
+ * A plain `Object.assign` replaced the whole `metadata` object, so
+ * `extraFields: { metadata: { create_surface: 'x' } }` silently dropped
+ * `create_mode` - the only thing that makes a describe a describe - along
+ * with the session token and the sliders, on a create that is billed.
+ */
+export function applyExtraFields(
+  body: GenerateWireBody,
+  extra: Record<string, unknown> | undefined,
+): GenerateWireBody {
+  if (extra === undefined) return body;
+  const { metadata, ...rest } = extra;
+  Object.assign(body, rest);
+  if (metadata !== null && typeof metadata === 'object' && !Array.isArray(metadata)) {
+    Object.assign(body.metadata, metadata);
+  } else if (metadata !== undefined) {
+    Object.assign(body, { metadata });
+  }
+  return body;
 }
 
 /**
@@ -249,7 +274,23 @@ export function buildDescribeBody(options: DescribeGenerateOptions): GenerateWir
  * generation that does not exist.
  */
 export function validateSubmission(response: unknown): Clip[] {
-  const parsed = GenerateResponseSchema.parse(response);
+  const result = GenerateResponseSchema.safeParse(response);
+  if (!result.success) {
+    // Reached only after a 2xx to a create, which may well have been accepted
+    // and billed. A raw ZodError carried no code to branch on; this does, and
+    // its body keeps whatever clip ids came back.
+    throw new SunoError({
+      code: 'response_invalid',
+      message: `create response failed validation: ${result.error.issues
+        .slice(0, 5)
+        .map((i) => `${i.path.join('.')} ${i.message}`)
+        .join('; ')}. The generation may have been created and charged: check the feed before retrying.`,
+      path: GENERATE_PATH,
+      body: JSON.stringify(response) ?? String(response),
+      alert: true,
+    });
+  }
+  const parsed = result.data;
   if (typeof parsed.status === 'string' && parsed.status.toLowerCase() === 'error') {
     throw new SunoError({
       code: 'api_error',

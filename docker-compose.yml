@@ -25,8 +25,9 @@ services:
       - path: .env
         required: false
 
-  # Re-record response baselines after a verified client update, then commit
-  # src/drift/baselines/. Mounts the source so the new files land on the host.
+  # Re-record response baselines after a verified client update, then run
+  # `npm run gen:baselines` and commit src/drift/. Mounts the baselines so the
+  # new files land on the host.
   record-baselines:
     build: .
     command: npx tsx scripts/record-baselines.ts

@@ -1,0 +1,18 @@
+# The image installs its own Linux dependencies and builds its own dist/.
+# Without this, `COPY . .` shipped the host's darwin node_modules and a stale
+# dist/esm + dist/cjs into the build stage.
+node_modules
+dist
+
+# Session cookies never belong in a build context or a layer.
+.env
+.env.*
+!.env.example
+.npmrc
+.npmrc.*
+
+.git
+tmp-songs
+songs
+coverage
+.DS_Store

@@ -18,15 +18,16 @@ import { fileURLToPath } from 'node:url';
 import { billingInfo, captchaCheck, generateLyrics } from '../src/api/misc.js';
 import { getClips, listClips } from '../src/api/feed.js';
 import { SunoClient } from '../src/client.js';
+import { DEFAULT_MIN_SAMPLES } from '../src/drift/detect.js';
 import { emptyBaseline, foldIntoBaseline, type Baseline } from '../src/drift/shape.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = join(here, '..', 'src', 'drift', 'baselines');
 const recordedAt = new Date().toISOString();
 
-/** Matches DEFAULT_MIN_SAMPLES in the detector: fewer, and it cannot tell a
- * required field from a coincidence. */
-const MIN_SAMPLES = 5;
+/** The detector's own minimum: fewer, and it cannot tell a required field
+ * from a coincidence. */
+const MIN_SAMPLES = DEFAULT_MIN_SAMPLES;
 
 const cookie = process.env['SUNO_COOKIE'];
 const samples = new Map<string, unknown[]>();
@@ -85,8 +86,9 @@ async function main(): Promise<void> {
     });
     seenClipIds.push(...result.clips.map((c) => c.id));
     const next = result.next_cursor;
-    if (typeof next !== 'string' || next === '' || next === cursor) break;
-    cursor = next;
+    // A short library runs out of pages before MIN_SAMPLES: start over from
+    // page one rather than stop, which shipped a 4-sample feed.v3 baseline.
+    cursor = typeof next === 'string' && next !== '' && next !== cursor ? next : undefined;
   }
 
   // Sample clips in a few states so the baseline learns which fields are
@@ -111,15 +113,25 @@ async function main(): Promise<void> {
   }
 
   mkdirSync(outDir, { recursive: true });
+  let written = 0;
   for (const [endpoint, values] of samples) {
     const baseline = values.reduce<Baseline>(
       (acc, v) => foldIntoBaseline(acc, v),
       emptyBaseline(endpoint, recordedAt),
     );
+    // A thin baseline is worse than the committed one: below the detector's
+    // minimum, a field present in every sample still cannot count as required,
+    // so the removals it exists to catch go unreported.
+    if (baseline.samples < MIN_SAMPLES) {
+      console.error(`  ${endpoint.padEnd(16)} only ${baseline.samples} samples, need ${MIN_SAMPLES}: NOT written`);
+      process.exitCode = 1;
+      continue;
+    }
     writeFileSync(join(outDir, `${endpoint}.json`), `${JSON.stringify(baseline, null, 2)}\n`);
+    written += 1;
     console.log(`  ${endpoint.padEnd(16)} ${baseline.samples} samples, ${Object.keys(baseline.paths).length} paths`);
   }
-  console.log(`\nwrote ${samples.size} baselines to ${outDir}`);
+  console.log(`\nwrote ${written} baselines to ${outDir}; run \`npm run gen:baselines\` so the client loads them`);
 }
 
 main().catch((err: unknown) => {

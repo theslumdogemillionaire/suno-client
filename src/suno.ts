@@ -52,9 +52,10 @@ import { getPlaylist, type Playlist } from './api/playlist.js';
 import { artworkUrl, downloadClip, downloadClips, type DownloadOptions } from './download.js';
 import { SunoError } from './errors.js';
 import { GenerationJob } from './poll.js';
+import { untilAborted } from './internal/retry.js';
 import { registryFromBaselines } from './drift/registry.js';
 import type { AccountTier } from './api/account.js';
-import type { AlignedWord, BillingInfo, CaptchaCheck, Clip, FeedPage, LyricsResult, Model, PersonaInfo } from './schemas.js';
+import { isFetchableUrl, type AlignedWord, type BillingInfo, type CaptchaCheck, type Clip, type FeedPage, type LyricsResult, type Model, type PersonaInfo } from './schemas.js';
 
 export interface SunoOptions extends SunoClientOptions {
   /**
@@ -127,15 +128,21 @@ export class Suno {
   async account(options: { refresh?: boolean; signal?: AbortSignal } = {}): Promise<AccountInfo> {
     if (options.refresh === true) this.accountOnce = undefined;
     // Assigned before the await so concurrent creates share one billing call.
-    this.accountOnce ??= billingInfo(this.client, options.signal)
-      .then(describeAccount)
-      .catch((err: unknown) => {
-        // A failed lookup must not be cached, or one bad minute pins every
-        // later create to the fallback model for the life of the process.
-        this.accountOnce = undefined;
-        throw err;
-      });
-    return this.accountOnce;
+    // The shared call carries no caller's signal: one caller cancelling must
+    // not fail the others waiting on it. Each waits under its own signal.
+    if (this.accountOnce === undefined) {
+      const lookup: Promise<AccountInfo> = billingInfo(this.client)
+        .then(describeAccount)
+        .catch((err: unknown) => {
+          // A failed lookup must not be cached, or one bad minute pins every
+          // later create to the fallback model for the life of the process.
+          // Only this lookup, though: a newer one may have replaced it.
+          if (this.accountOnce === lookup) this.accountOnce = undefined;
+          throw err;
+        });
+      this.accountOnce = lookup;
+    }
+    return untilAborted(this.accountOnce, options.signal);
   }
 
   /**
@@ -185,7 +192,10 @@ export class Suno {
     try {
       const info = await this.account(signal ? { signal } : {});
       return pickDefaultModel(info.models);
-    } catch {
+    } catch (err) {
+      // A cancel is not billing being unavailable: falling back would carry
+      // on and submit the create the caller just cancelled.
+      if (signal?.aborted === true) throw err;
       return undefined;
     }
   }
@@ -195,7 +205,8 @@ export class Suno {
     try {
       const info = await this.account(signal ? { signal } : {});
       return pickRemasterModel(info.raw);
-    } catch {
+    } catch (err) {
+      if (signal?.aborted === true) throw err;
       return undefined;
     }
   }
@@ -208,12 +219,18 @@ export class Suno {
     return captchaCheck(this.client, ctype, signal);
   }
 
-  login(cookie: string, signal?: AbortSignal): Promise<unknown> {
-    return this.client.login(cookie, signal);
+  // Both drop the account cache: tier, models and default belong to the
+  // session, and keeping them sent the old account's default model with the
+  // new account's session - a 403 on every create until a restart.
+  async login(cookie: string, signal?: AbortSignal): Promise<unknown> {
+    const state = await this.client.login(cookie, signal);
+    this.accountOnce = undefined;
+    return state;
   }
 
-  logout(): Promise<void> {
-    return this.client.logout();
+  async logout(): Promise<void> {
+    await this.client.logout();
+    this.accountOnce = undefined;
   }
 
   // --- create --------------------------------------------------------------
@@ -335,7 +352,10 @@ export class Suno {
   /** Rehydrate a job from ids, e.g. after a process restart. */
   async job(ids: readonly string[], signal?: AbortSignal): Promise<GenerationJob> {
     const clips = await getClips(this.client, ids, signal);
-    return new GenerationJob(this.client, clips);
+    // Track the ids asked for, not the clips the feed happened to return: one
+    // still rendering can be missing from it, and dropping it let wait()
+    // report done without ever seeing that clip.
+    return new GenerationJob(this.client, clips, ids);
   }
 
   alignedLyrics(clipId: string, signal?: AbortSignal): Promise<AlignedWord[]> {
@@ -409,7 +429,8 @@ export class Suno {
       title: clip.title,
       style: clip.metadata?.tags ?? undefined,
       lyrics: clip.metadata?.prompt ?? undefined,
-      audioUrl: clip.audio_url ?? undefined,
+      // The 403 sentinel is not a URL anyone can play. See AUDIO_FORBIDDEN_URL.
+      audioUrl: isFetchableUrl(clip.audio_url) ? clip.audio_url : undefined,
       artworkUrl: artworkUrl(clip),
       durationS: clip.metadata?.duration ?? undefined,
       words,

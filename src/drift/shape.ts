@@ -169,10 +169,15 @@ export function foldIntoBaseline(baseline: Baseline, value: unknown): Baseline {
         total: prev.total + totalHere,
       };
     } else {
+      // First seen in this response, so absent from every earlier container
+      // that could have held it. Counting only this response made a field
+      // missing from sample 1 and present in 2..6 look required, and the
+      // baseline depend on sample order.
+      const earlier = container === '' ? baseline.samples : (baseline.paths[container]?.total ?? 0);
       paths[path] = {
         types: observedTypes ? ([...observedTypes].sort() as TypeKind[]) : [],
         seen: seenHere,
-        total: totalHere,
+        total: totalHere + earlier,
       };
     }
   }

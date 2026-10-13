@@ -1,6 +1,7 @@
 import type { SunoClient } from '../client.js';
 import { ClipSchema, type Clip } from '../schemas.js';
 import {
+  applyExtraFields,
   baseWireBody,
   DEFAULT_MODEL,
   submitGenerate,
@@ -33,7 +34,7 @@ export function buildCoverBody(clipId: string, options: CoverOptions = {}): Gene
   body.negative_tags = options.negativeTags ?? '';
   body.persona_id = options.personaId ?? null;
   body.token = options.captchaToken ?? null;
-  return Object.assign(body, options.extraFields);
+  return applyExtraFields(body, options.extraFields);
 }
 
 export async function cover(
@@ -53,7 +54,7 @@ export function buildRemasterBody(clipId: string, options: RemasterOptions = {})
   body.cover_clip_id = clipId;
   body.title = options.title ?? '';
   body.token = options.captchaToken ?? null;
-  return Object.assign(body, options.extraFields);
+  return applyExtraFields(body, options.extraFields);
 }
 
 export async function remaster(
@@ -96,7 +97,7 @@ export function buildExtendBody(clipId: string, options: ExtendOptions): Generat
   body.negative_tags = options.negativeTags ?? '';
   body.persona_id = options.personaId ?? null;
   body.token = options.captchaToken ?? null;
-  return Object.assign(body, options.extraFields);
+  return applyExtraFields(body, options.extraFields);
 }
 
 export async function extend(

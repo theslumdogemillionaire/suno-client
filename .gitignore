@@ -2,7 +2,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# Holds a ~7 day Suno session cookie. Any tier, all of them are credentials.
+# Holds a Suno session cookie, good for about a year. Any tier, all of them are credentials.
 .env
 .env.*
 !.env.example

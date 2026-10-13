@@ -55,11 +55,17 @@ export class GenerationJob {
   readonly ids: string[];
   private latest: Clip[];
 
+  /**
+   * `ids` defaults to the ids of `clips`. Pass it when rehydrating: the feed
+   * can omit a clip that is still rendering, and the job must keep waiting
+   * on it rather than forget it.
+   */
   constructor(
     private readonly client: SunoClient,
     clips: Clip[],
+    ids: readonly string[] = clips.map((c) => c.id),
   ) {
-    this.ids = clips.map((c) => c.id);
+    this.ids = [...ids];
     this.latest = clips;
   }
 

@@ -14,11 +14,12 @@ import {
   findSessionCookies,
   type BrowserName,
 } from './browser-cookie.js';
-import { decodeJwtClaims } from './auth.js';
-import { FileAuthStore, defaultAuthPath } from './store.js';
+import { decodeJwtClaims, normalizeCookieInput } from './auth.js';
+import { FileAuthStore, defaultAuthPath, type AuthStore } from './store.js';
 import { SunoError } from './errors.js';
 import { formatDriftReport } from './drift/detect.js';
 import { registryFromBaselines } from './drift/registry.js';
+import { isFetchableUrl } from './schemas.js';
 
 const USAGE = `suno-client <command>
 
@@ -156,9 +157,18 @@ async function cookieFromBrowser(): Promise<string> {
   }
 
   const chosen = choice.cookie;
+  // Decided by whether it actually matched, not by whether a session was
+  // stored: the old test claimed "matches" while switching accounts.
+  const matched = knownClientId !== undefined && chosen.clientId === knownClientId;
   if (found.length > 1) {
-    const why = knownClientId !== undefined ? 'matches the session already stored' : 'same account, expires last';
+    const why = matched ? 'matches the session already stored' : 'same account, expires last';
     console.error(`[login] ${found.length} sessions found; using ${chosen.browser}/${chosen.profile} (${why}).`);
+  }
+  if (knownClientId !== undefined && !matched) {
+    console.error(
+      `[login] the stored session belongs to client ${knownClientId}, which no browser profile holds; ` +
+        `replacing it with ${chosen.clientId ?? 'an unidentified client'}.`,
+    );
   }
   const until = chosen.expiresAt ? ` (valid until ${chosen.expiresAt.toISOString().slice(0, 10)})` : '';
   console.error(`[login] using ${chosen.browser}/${chosen.profile}${until}.`);
@@ -233,11 +243,40 @@ async function describeSession(suno: Suno): Promise<unknown> {
   };
 }
 
+/**
+ * SUNO_COOKIE as client options, checked up front.
+ *
+ * Passed straight through, a malformed one threw while the client was being
+ * built, before the command was even read: `help` and the session-free
+ * `playlist` failed too, and the error never named the variable. A bad value
+ * now fails only what needs a session, and says which setting to fix.
+ */
+function envSession(cookie: string): { cookie: string } | { store: AuthStore } {
+  try {
+    normalizeCookieInput(cookie);
+    return { cookie };
+  } catch (err) {
+    const unusable = new SunoError({
+      code: 'invalid_input',
+      message:
+        `SUNO_COOKIE is not a usable session (${err instanceof Error ? err.message : String(err)}). ` +
+        'It needs the __client value from auth.suno.com, or a full Cookie header that contains it.',
+    });
+    const fail = (): Promise<never> => Promise.reject(unusable);
+    return { store: { load: fail, save: fail, clear: fail } };
+  }
+}
+
 async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
   const cookie = process.env['SUNO_COOKIE'];
+  // These three act on the STORED session. Handed the env cookie, the client
+  // keeps its session in memory: `login` then stored nothing, `logout` left
+  // the file in place while saying "session cleared", and `session` reported
+  // the file but checked the env cookie. `login` still reads SUNO_COOKIE below.
+  const storedSession = command === 'login' || command === 'logout' || command === 'session';
   const suno = new Suno({
-    ...(cookie ? { cookie } : {}),
+    ...(cookie && !storedSession ? envSession(cookie) : {}),
     baselines: registryFromBaselines(),
     onDrift: (report) => {
       if (report.degraded) console.error(`[drift] ${formatDriftReport(report)}`);
@@ -395,7 +434,7 @@ async function main(): Promise<void> {
           outputDir,
           source: sourceArg ?? 'playback',
         });
-        out(res);
+        outDownloads(res);
         return;
       }
       const ids = positionals(rest);
@@ -405,7 +444,7 @@ async function main(): Promise<void> {
         outputDir,
         ...(sourceArg !== undefined ? { source: sourceArg } : {}),
       });
-      out(res);
+      outDownloads(res);
       return;
     }
 
@@ -432,10 +471,34 @@ async function finish(suno: Suno, job: Awaited<ReturnType<Suno['generate']>>): P
   }
   const dir = arg('download');
   if (dir !== undefined) {
-    out(await suno.downloadAll(job.completed, { outputDir: dir }));
+    const source = arg('source');
+    outDownloads(
+      await suno.downloadAll(job.completed, {
+        outputDir: dir,
+        ...(source === 'download' || source === 'playback' ? { source } : {}),
+      }),
+    );
   } else {
-    out(job.completed.map((c) => ({ id: c.id, title: c.title, audio: c.audio_url })));
+    // audio_url is a 403 sentinel on every clip since 2026-09-10: printing it
+    // handed out a link that cannot play. Show it only if it is fetchable.
+    out(
+      job.completed.map((c) => ({
+        id: c.id,
+        title: c.title,
+        ...(isFetchableUrl(c.audio_url) ? { audio: c.audio_url } : {}),
+      })),
+    );
   }
+}
+
+/**
+ * Print a bulk download's result, and fail the exit code when any clip
+ * failed: printing `{"failed": [...]}` and exiting 0 told a scheduler that
+ * a run which wrote nothing had succeeded.
+ */
+function outDownloads(res: { downloaded: string[]; failed: unknown[] }): void {
+  out(res);
+  if (res.failed.length > 0) process.exitCode = 1;
 }
 
 main().catch((err: unknown) => {

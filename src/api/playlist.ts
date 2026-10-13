@@ -12,7 +12,12 @@ import { SunoError } from '../errors.js';
 import { ClipSchema, type Clip } from '../schemas.js';
 
 export const PLAYLIST_PATH = '/api/playlist';
-const MAX_PAGES = 20;
+/**
+ * A runaway guard, not a size limit: paging already ends on the first page
+ * that adds nothing. Reaching it throws rather than returning part of the
+ * playlist as if it were all of it, which is what a cap of 20 used to do.
+ */
+const MAX_PAGES = 500;
 
 const PlaylistItemSchema = z
   .object({
@@ -68,7 +73,13 @@ export async function getPlaylist(
   const seen = new Set<string>();
   let meta: PlaylistPage | undefined;
 
-  for (let page = 1; page <= MAX_PAGES; page++) {
+  for (let page = 1; ; page++) {
+    if (page > MAX_PAGES) {
+      throw new SunoError({
+        code: 'api_error',
+        message: `playlist ${pid} still had new clips after ${MAX_PAGES} pages; refusing to return it truncated`,
+      });
+    }
     const data = await client.request({
       method: 'GET',
       path: `${PLAYLIST_PATH}/${pid}`,
@@ -90,8 +101,10 @@ export async function getPlaylist(
       entries.push({ pos, clip });
       added += 1;
     }
-    const total = data.num_total_results ?? entries.length;
-    if (added === 0 || entries.length >= total) break;
+    // Without a total, keep going until a page adds nothing: treating the
+    // clips seen so far as the total stopped after page 1.
+    const total = data.num_total_results;
+    if (added === 0 || (typeof total === 'number' && entries.length >= total)) break;
   }
 
   if (!meta) {
@@ -126,12 +139,15 @@ function clipFromItem(raw: unknown): Clip | undefined {
   if (raw === null || typeof raw !== 'object' || !('id' in raw) || typeof (raw as { id: unknown }).id !== 'string') {
     return undefined;
   }
+  // A null is as much a hole as a missing key. Spread as-is it overrode the
+  // defaults below, and the clip was dropped anyway.
+  const present = Object.fromEntries(Object.entries(raw).filter(([, value]) => value !== null));
   const filled = ClipSchema.safeParse({
     title: '',
     status: 'complete',
     model_name: 'unknown',
     created_at: '1970-01-01T00:00:00.000Z',
-    ...raw,
+    ...present,
   });
   return filled.success ? filled.data : undefined;
 }

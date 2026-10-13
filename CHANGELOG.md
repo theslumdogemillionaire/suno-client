@@ -2,8 +2,100 @@
 
 ## Unreleased
 
+A full review of the client, and the fixes it called for. Several touch money:
+a cancelled create could still be sent and billed, and a stem separation could
+be started four times. Every scenario below was reproduced before the fix and
+replayed after it.
+
+### Changed (read before upgrading)
+
+- **Node 22.13 or later.** `login --from-browser` reads the cookie database
+  through `node:sqlite`, which older 22.x lines only expose behind
+  `--experimental-sqlite`. On those it failed with "No such built-in module" on
+  every profile; `engines` now says so, and the error names the version.
+- **Bulk downloads stop on what needs a human.** `downloadAll`,
+  `downloadPlaylist` and `downloadClips` still record a refusal about one clip
+  in `failed`, now with its `code`, but a cancel or an alert-class error (dead
+  session, moved route, changed response) throws instead of being repeated for
+  every remaining clip as a message string.
+- **CLI exit codes.** `download` and `generate --download` exit 1 when any clip
+  failed (they printed the failures and exited 0), and 2 on an alert-class error.
+- **Ids are refused or encoded.** An empty id, `.` or `..` is `invalid_input`;
+  every other clip and persona id is percent-encoded into its URL path.
+- **A captcha-gated create costs one JWT refresh and one replay** before it
+  reports `captcha_required`, which is the documented design that never ran
+  (see Fixed). The daily schema probe therefore sends two rejected creates per
+  run instead of one.
+
 ### Fixed
 
+- **A cancelled create is no longer sent.** `request()` never checked
+  `signal.aborted`, and an `abort` listener added to a signal that already fired
+  never runs, so a create cancelled before it went out - or during the model
+  lookup, whose failure `modelFor` swallowed - was submitted and billed. Aborts
+  are never retryable now, whatever their reason, and every abortable wait
+  (`job.wait()`, lyrics, download polling) rejects with a `SunoError` instead of
+  a bare `DOMException` whose numeric `code` read as 20.
+- **`timeoutMs` covers the whole attempt.** The timer was cleared once headers
+  arrived, so a stalled body - and every Clerk call, which had no timeout at
+  all - waited on undici's 300 s defaults or forever. A connection reset mid-body
+  is now a retryable transport error rather than `response_invalid`.
+- **`captcha_required` fires on the body Suno actually sends.** The measured
+  gate answers `422 {"error_type": "token_validation_failed", ...}`; the client
+  only matched the spaced `Token validation failed`, so a gated account got a
+  plain `api_error`, no alert, and a bot never paused.
+- **`suno.job(ids)` waits on every id it was given.** It kept only the clips the
+  feed returned, so after a restart a clip still rendering was dropped, and an
+  empty answer made `wait()` resolve at once with nothing.
+- **Clip ids can no longer reach other endpoints.** Interpolated unencoded,
+  `suno.waveform('../billing/info/#')` was an authenticated read of the
+  account's billing, returned whole through the passthrough schema.
+- **A malformed create response is a `SunoError`.** `validateSubmission` threw a
+  raw `ZodError` after a create Suno had accepted and charged; it is now
+  `response_invalid` with `alert`, and its body keeps the clip ids.
+- **Stem separation is never retried.** It inherited three retries, so a slow
+  answer or a 502 after Suno accepted the job started up to four separations.
+- **A refresh can no longer undo a logout or a login.** One still in flight
+  wrote the old session back to memory and to disk once Clerk answered.
+- **One Clerk exchange for a burst of 401s.** A late 401 cleared the token a
+  concurrent request had just minted (ten requests, four exchanges), and any
+  refresh failure, Clerk's own 429 included, fell through to a full exchange.
+- **The account cache follows the session.** `login()` and `logout()` now drop
+  it (the old account's default model was sent with the new session, a 403 on
+  every create), and one caller's cancel no longer fails the shared lookup for
+  the others.
+- **`extraFields.metadata` is merged, not swapped in.** Adding one metadata
+  field dropped `create_mode`, so a describe was billed as a custom create.
+- **File names fit the filesystem.** The slug was capped in UTF-16 units, not
+  bytes: an 80-character CJK title failed every download with `ENAMETOOLONG`.
+  Each download also writes its own scratch file, so two downloads of one clip
+  no longer delete each other's.
+- **The device id is persisted.** A bare-cookie login stored none, so every
+  process sent a fresh random one; it now keeps the stored id or saves its own.
+- **No more 403 sentinel handed out as a URL.** `track().audioUrl` and
+  `generate --wait` showed `audio_url`, which is `/api/forbidden` on every clip.
+- **Playlists are read whole.** Paging stopped after page 1 when Suno omitted
+  the total and silently at 20 pages otherwise; a clip with an explicit `null`
+  field was dropped.
+- **LRC timestamps.** 59.999 s rendered as `[00:60.00]`; it is `[01:00.00]`.
+- **Drift detection sees a renamed array.** Renaming `clips` produced three
+  `info` lines while the library parsed as empty; a field that holds consumed
+  paths now counts as required and its absence is an `error`. Baseline folding
+  no longer depends on sample order, and `record-baselines` refuses to write an
+  endpoint below the 5-sample minimum (feed.v3 shipped with 4).
+- **CLI.** `login`, `logout` and `session` act on the stored session even with
+  `SUNO_COOKIE` set: `login` stored nothing, and `logout` said "session cleared"
+  and left the file. A malformed `SUNO_COOKIE` fails only what needs a session,
+  with a message that names it, instead of every command including `help`.
+  `login --from-browser` no longer claims a different account "matches the
+  session already stored", and says when it replaces one. `--source` is
+  honoured after `generate --download`.
+- **The example queue keeps the request that triggered a pause** and runs it
+  first on `resume()`, unless the create had already gone out.
+- **Docker.** A `.dockerignore` keeps the host's darwin `node_modules`, a stale
+  `dist/` and `.env` out of the build context.
+- **Docs.** The README's CLI path (`dist/esm/cli.js`), the cookie lifetime
+  (a year, not a week) and its host (`auth.suno.com`) in `.env.example`.
 - **`npm publish` no longer warns about the `bin` entry.** The release job
   logged `"bin[suno-client]" script name dist/esm/cli.js was invalid and
   removed`. Despite the wording, nothing was removed: npm 11 only strips the

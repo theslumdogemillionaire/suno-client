@@ -44,6 +44,12 @@ function isConsumed(path: string, consumed: readonly string[] | undefined): bool
   return consumed.some((c) => path === c || path.startsWith(`${c}.`) || path.startsWith(`${c}[]`));
 }
 
+/** `clips` for a consumed `clips[].id`: the field every consumed path below it lives in. */
+function holdsConsumed(path: string, consumed: readonly string[] | undefined): boolean {
+  if (!consumed) return false;
+  return consumed.some((c) => c.startsWith(`${path}[]`) || c.startsWith(`${path}.`));
+}
+
 /**
  * Compare one live response against a recorded baseline.
  *
@@ -66,8 +72,15 @@ export function detectDrift(
     // across enough containers for that to mean something. `total` counts
     // containers, not responses, so a field on 40% of clips is correctly
     // optional even when every sampled page contained at least one clip with it.
+    //
+    // A field that holds paths we read is held to a lower bar: present in
+    // every sample is enough, however few. Its absence is what a rename looks
+    // like (`clips` becoming `items`), every consumed path below it is skipped
+    // as an empty container, and the minimum-sample guard - meant for optional
+    // fields that merely happened to be sampled - hid it entirely.
+    const holder = holdsConsumed(path, consumedPaths);
     const alwaysPresent =
-      entry.total >= minSamples && entry.seen === entry.total && entry.seen > 0;
+      (entry.total >= minSamples || holder) && entry.seen === entry.total && entry.seen > 0;
     const actual = shape[path];
 
     if (!actual) {
@@ -76,7 +89,7 @@ export function detectDrift(
       // array). Nothing under it could appear, so its absence is not evidence.
       if ((containers.get(containerOf(path)) ?? 0) === 0) continue;
       findings.push({
-        severity: isConsumed(path, consumedPaths) ? 'error' : 'warn',
+        severity: isConsumed(path, consumedPaths) || holder ? 'error' : 'warn',
         kind: 'removed',
         path,
         expected: entry.types,
