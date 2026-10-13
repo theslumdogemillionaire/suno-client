@@ -27,6 +27,10 @@ export type SunoErrorCode =
   // the normal state, and 48 of 50 alerting would be noise): the caller skips
   // the clip, or unlocks it and accepts the cost.
   | 'download_locked'
+  // `POST /api/mango/rights` refused to hand over playback keys (401/403).
+  // Never observed so far; kept apart from `plan_required` because no plan
+  // upgrade would change a refusal about one clip.
+  | 'playback_denied'
   | 'rate_limited'
   | 'schema_drift'
   | 'route_gone'

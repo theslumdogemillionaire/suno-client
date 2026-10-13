@@ -89,7 +89,7 @@ export interface RequestOptions<T> {
   /** Key under which this response's drift baseline is registered. */
   endpointKey?: string;
   signal?: AbortSignal;
-  /** Skip the JWT freshness check. Only the auth bootstrap needs this. */
+  /** Send no session at all, even when one is stored. */
   skipAuth?: boolean;
   /** Override retry behaviour for a single call. */
   retry?: Partial<RetryOptions>;

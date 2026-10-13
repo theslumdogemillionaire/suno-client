@@ -172,8 +172,17 @@ unauthenticated, HTTP 200, `content-type: audio/mp4`, plausible file size, one
 entry per clip (`m4a-opus` / `progressive` / `1.0.0` on all 50). The payload is
 encrypted. It measures 7.997 bits per byte from first block to last and
 contains no `ftyp`, no `moov`, no container magic anywhere; ffmpeg rejects it
-with "moov atom not found". It is typed in `ClipSchema` so the drift detector
-stays quiet about it, and for no other reason.
+with "moov atom not found". Fetched on its own it is useless.
+
+It is how suno.com's player gets its sound, though: the player fetches it and
+asks `POST /api/mango/rights` for the keys (API.md §3.16). `playTrack()` does
+the same and returns the decrypted stream. Measured on 2026-10-13: it spends no
+download (`download_usage` unchanged), and `/rights` is not an access check —
+asked anonymously, it handed over the keys for one of the account's private
+clips. Asked with the session, it answers without the `glt` the unwrap needs,
+so the client never sends one there. It stays out of `downloadClip`'s
+default path for the reason above: a rights failure must never be able to
+look like a finished file.
 
 Worth knowing that the CloudFront objects carry a `Last-Modified` minutes old
 and an `x-amz-expiration` about a month out — the library is being re-encoded
@@ -269,7 +278,7 @@ live overlay they are the interesting half of the API.
 | `GET /api/gen/{id}/key` | Detected musical key. `state: "running"` while analysing. |
 | `GET /api/gen/{id}/waveform-aggregates` | Pre-computed waveform at 11 mip-map levels. Draw a scrubber without downloading and decoding the MP3. |
 | `GET /api/clip/{id}/stems/pages` | How many pages of separated stems exist. |
-| `POST /api/mango/rights` | Playback decryption key and IV. Not used here. |
+| `POST /api/mango/rights` | Playback keys for `media_urls`. Anonymous on purpose: with a session the answer lacks `glt`. `playTrack()` uses it. |
 
 `suno.track(clipId)` rolls the useful ones into one call: title, style, lyrics,
 cover art URL, duration, word-level timings, LRC, bar lines, BPM and key.

@@ -1,3 +1,8 @@
+import { createCipheriv, createHash, randomBytes } from 'node:crypto';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { clipFilename, downloadClip, toSyncedLyrics } from '../../src/download.js';
@@ -11,6 +16,37 @@ import {
 
 const ID = 'b1a2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d';
 const SHORT = 'b1a2c3d4';
+
+function wrap(plain: Buffer, clipId: string, userKey: Buffer): string {
+  const nonce = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', userKey, nonce);
+  cipher.setAAD(Buffer.from(clipId, 'utf8'));
+  const ciphertext = Buffer.concat([cipher.update(plain), cipher.final()]);
+  return Buffer.concat([nonce, ciphertext, cipher.getAuthTag()]).toString('base64');
+}
+
+function ftypStub(): Buffer {
+  const buf = Buffer.alloc(32);
+  buf.writeUInt32BE(24, 0);
+  buf.write('ftyp', 4);
+  buf.write('isom', 8);
+  return buf;
+}
+
+function encryptPlayback(plain: Buffer, clipId: string, glt = 'guest-token') {
+  const userKey = createHash('sha256').update(glt, 'utf8').digest();
+  const key = randomBytes(16);
+  const counter = randomBytes(16);
+  const cipher = createCipheriv('aes-128-ctr', key, counter);
+  return {
+    ciphertext: Buffer.concat([cipher.update(plain), cipher.final()]),
+    rights: {
+      key: wrap(key, clipId, userKey),
+      iv: wrap(counter, clipId, userKey),
+      glt,
+    },
+  };
+}
 
 function word(text: string, start_s: number): AlignedWord {
   return { word: text, start_s, end_s: start_s + 0.4 };
@@ -160,25 +196,25 @@ describe('toSyncedLyrics', () => {
   });
 });
 
-describe('the audio_url sentinel', () => {
-  const clip = (audio_url: string | null): Clip =>
-    ClipSchema.parse({
-      id: ID,
-      title: 'Paroles Ici',
-      status: 'complete',
-      model_name: 'chirp-hawk',
-      audio_url,
-      created_at: '2026-09-10T14:13:00.000Z',
-      media_urls: [
-        {
-          url: `https://d2lwuy8qc234o3.cloudfront.net/1/clip/${ID}.m4a`,
-          content_type: 'm4a-opus',
-          delivery: 'progressive',
-          encoding: '1.0.0',
-        },
-      ],
-    });
+const clip = (audio_url: string | null): Clip =>
+  ClipSchema.parse({
+    id: ID,
+    title: 'Paroles Ici',
+    status: 'complete',
+    model_name: 'chirp-hawk',
+    audio_url,
+    created_at: '2026-09-10T14:13:00.000Z',
+    media_urls: [
+      {
+        url: `https://d2lwuy8qc234o3.cloudfront.net/1/clip/${ID}.m4a`,
+        content_type: 'm4a-opus',
+        delivery: 'progressive',
+        encoding: '1.0.0',
+      },
+    ],
+  });
 
+describe('the audio_url sentinel', () => {
   it('is not fetchable, even though it is a perfectly well-formed non-empty URL', () => {
     expect(AUDIO_FORBIDDEN_URL).not.toBe('');
     expect(Boolean(AUDIO_FORBIDDEN_URL)).toBe(true); // the trap, spelled out
@@ -267,5 +303,71 @@ describe('the audio_url sentinel', () => {
     const parsed = clip(AUDIO_FORBIDDEN_URL);
     expect(parsed.media_urls).toHaveLength(1);
     expect(parsed.media_urls?.[0]?.content_type).toBe('m4a-opus');
+  });
+
+  it('does not call mango unless source is playback', async () => {
+    const paths: string[] = [];
+    const spy = {
+      request: async (opts: { path: string }) => {
+        paths.push(opts.path);
+        return LOCKED;
+      },
+    } as never;
+    await expect(downloadClip(spy, clip(AUDIO_FORBIDDEN_URL), { outputDir: '/tmp' })).rejects.toMatchObject({
+      code: 'download_locked',
+    });
+    expect(paths.some((p) => p.includes('mango'))).toBe(false);
+  });
+});
+
+describe('downloadClip playback', () => {
+  it('decrypts media_urls instead of hitting the metered download endpoint', async () => {
+    const packed = encryptPlayback(ftypStub(), ID);
+    const dir = await mkdtemp(join(tmpdir(), 'suno-dl-'));
+    const originalFetch = globalThis.fetch;
+    const paths: string[] = [];
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
+      const url = String(input);
+      if (url.includes('cloudfront.net')) {
+        return new Response(packed.ciphertext, { status: 200 });
+      }
+      return originalFetch(input as never);
+    }) as typeof fetch;
+    try {
+      const spy = {
+        request: async (opts: { path: string; skipAuth?: boolean }) => {
+          paths.push(opts.path);
+          expect(opts.skipAuth).toBe(true);
+          return packed.rights;
+        },
+      } as never;
+      let progressed = 0;
+      const target = await downloadClip(spy, clip(AUDIO_FORBIDDEN_URL), {
+        outputDir: dir,
+        source: 'playback',
+        embedTags: false,
+        onProgress: ({ bytes }) => {
+          progressed = bytes;
+        },
+      });
+      expect(paths).toEqual([`/api/mango/rights`]);
+      expect(progressed).toBe(ftypStub().length);
+      expect(target.endsWith('.m4a')).toBe(true);
+      const bytes = await readFile(target);
+      expect(bytes.equals(ftypStub())).toBe(true);
+    } finally {
+      globalThis.fetch = originalFetch;
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses video on the playback path', async () => {
+    await expect(
+      downloadClip({ request: async () => ({}) } as never, clip(AUDIO_FORBIDDEN_URL), {
+        outputDir: '/tmp',
+        source: 'playback',
+        video: true,
+      }),
+    ).rejects.toMatchObject({ code: 'invalid_input' });
   });
 });

@@ -22,6 +22,7 @@ Every endpoint carries a confidence marker. Do not treat them as equal.
 | `CAPTURED 2026-04-07` | Schema captured from a real Suno web-app request. Not re-verified since. |
 | `INFERRED` | Implemented in the reference client from third-party evidence, never captured. |
 | `BROKEN` | Live-tested today and it failed. The correct shape is unknown. |
+| `LIVE 2026-10-13` | Exercised against a real Pro account (playback keys, 3.16). |
 
 Three inputs were reconciled to produce this document, in descending authority:
 
@@ -297,7 +298,7 @@ cosmetic. Do not run paths through a URL normalizer.
 | `/api/feed/` (the `?ids=` poll) | `/api/edit/stems/{id}` |
 | `/api/gen/{id}/set_metadata/` | |
 | `/api/gen/{id}/set_visibility/` | |
-| `/api/gen/{id}/aligned_lyrics/v2/` | |
+| `/api/gen/{id}/aligned_lyrics/v2/` | `/api/mango/rights` |
 | `/api/persona/get-persona-paginated/{id}/` (slash before the query) | |
 
 ### Shared response types
@@ -949,6 +950,76 @@ transport and must not reuse the studio-api client.
   or rate-limit signal for the studio API and must not trigger a JWT refresh.
 
 Measured: roughly 185 kbps MP3.
+
+---
+
+### 3.16 `POST /api/mango/rights`: playback keys for `media_urls`
+
+`LIVE 2026-10-13`
+
+How suno.com's player turns the encrypted `media_urls` file into sound. Nothing about it
+touches the download allowance: this is listening, not the Download button.
+`download_usage` was identical before and after a run of rights calls and two full
+decrypts.
+
+**It is not a per-account access check.** Measured on a Pro account:
+
+| Caller | Clip | Answer |
+| --- | --- | --- |
+| anonymous (no `authorization`) | the account's own **private** clip | 200 `{key, iv, glt}`; decrypts to the full file |
+| anonymous | public clip | 200 `{key, iv, glt}`; decrypts |
+| with the session | the same private clip | 200 `{key, iv}`, **no `glt`** |
+| either | id that does not exist | 404 `{"detail": "Content not found"}` |
+
+So the clip id is enough, the same as it was with the old public `audio_url`. No 401 or
+403 has been observed.
+
+The signed-in answer cannot be used with the scheme below: without `glt` there is no
+wrap key, and how the signed-in player derives its own is not known. **Send this request
+without `authorization`.** The other headers of section 2 can stay.
+
+**Request:**
+
+```ts
+interface MangoRightsRequest {
+  content_params: {
+    content_id: string;              // the clip id
+    content_type: "clip";
+  };
+}
+```
+
+**Response:**
+
+```ts
+interface MangoRights {
+  key: string;   // base64, AES-256-GCM wrapped content key
+  iv: string;    // base64, AES-256-GCM wrapped 16-byte CTR counter
+  glt: string;   // utf-8 token; its SHA-256 is the key that unwraps the two above
+}
+```
+
+**Decrypting**, matching the player:
+
+1. `wrapKey = SHA-256(utf8(glt))`.
+2. Unwrap `key` and `iv` separately with AES-256-GCM under `wrapKey`. Layout of each
+   decoded value: `nonce = bytes[0:12]`, `tag = bytes[-16:]`, ciphertext in between.
+   Additional authenticated data: the clip id as utf-8. A wrong clip id fails the tag
+   check, so key material cannot be reused across clips.
+3. The audio file is AES-CTR (128, 192 or 256 bits by the unwrapped key's length) with
+   the unwrapped counter as the initial IV. CTR keeps the length, so the CDN's
+   `Content-Length` is the decrypted size, and decryption can run chunk by chunk as the
+   bytes arrive.
+4. The plaintext is an MP4 container: `ftyp` at offset 4, major brand `isom` on both
+   clips measured. Check the header before handing bytes to a player: a failed decrypt
+   is otherwise indistinguishable from a file. Decrypted size equalled the CDN's
+   `Content-Length` exactly (3 999 917 and 6 240 796 bytes).
+
+The `media_urls` fetch itself is a plain CDN request, like 3.15: no studio-api headers.
+`playTrack` runs it in parallel with `/rights`.
+
+Client: `playTrack(client, clip)` returns the decrypted stream; `downloadClip` with
+`source: 'playback'` writes it to disk.
 
 ---
 

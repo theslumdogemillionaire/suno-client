@@ -118,6 +118,7 @@ requests that can never succeed.
 | `not_found` | no | no | bad id |
 | `auth_expired` | no | no | handled internally: refresh and replay once |
 | `plan_required` | no | no | this account's plan does not allow that (403) |
+| `playback_denied` | no | no | `/api/mango/rights` refused this clip (401/403); never observed so far |
 | `captcha_required` | no | yes | generate one song by hand at suno.com |
 | `auth_dead` | no | yes | the cookie is finished, log in again |
 | `schema_drift` | no | yes | Suno changed the request schema |
@@ -296,6 +297,27 @@ Three things that matter when prompts come from strangers:
 - Call `suno.captchaCheck()` on a schedule. A gated account cannot generate, and
   clearing it needs a human at suno.com.
 - Generation costs 10 credits per call and returns 2 clips. Budget accordingly.
+
+### Playing a track the way suno.com does
+
+```ts
+import { pipeline } from 'node:stream/promises';
+
+const track = await suno.playTrack(clipId);
+res.setHeader('content-type', track.contentType);
+if (track.contentLength !== undefined) res.setHeader('content-length', track.contentLength);
+await pipeline(track.stream, res); // or ffmpeg's stdin, or a file
+```
+
+`playTrack` reproduces the web player: it fetches the encrypted `media_urls`
+file, asks `POST /api/mango/rights` for its keys in parallel, and decrypts as
+the bytes arrive. It spends no download from the monthly allowance.
+
+The rights call always goes out anonymous: sent with a session, Suno answers
+without the token the decryption needs. It needs no session at all, then, but
+`suno.playTrack(id)` looks the id up first, and that does. Signed out, pass a
+`Clip` instead — `suno.playlist(url)` gives you those without one. Details,
+measured on a live account, in [docs/API.md §3.16](docs/API.md).
 
 ## Looking like a browser
 

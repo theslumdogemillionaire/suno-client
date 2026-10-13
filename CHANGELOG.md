@@ -2,7 +2,41 @@
 
 ## Unreleased
 
+### Added
+
+- **`suno.playTrack(idOrClip)`**, playback the way suno.com's player does it:
+  the encrypted `media_urls` file and `POST /api/mango/rights` in parallel,
+  decrypted as it streams. Returns `{ stream, contentType, contentLength, ext }`.
+  Verified live on 2026-10-13 against a private and a public clip: full files,
+  byte counts equal to the CDN's `Content-Length`, and no download spent from
+  the allowance. The rights call is anonymous on purpose: with a session Suno
+  answers without the `glt` the unwrap needs. The decrypted header is checked
+  before the stream is returned, and destroying the stream cancels the CDN
+  download.
+- `playback_denied`, a new error code for a 401/403 from `/rights`, kept apart
+  from `plan_required`. Never observed so far.
+- `downloadClip(..., { source: 'playback' })` writes the same stream to disk,
+  and `download <id...> --source playback` does the same from the CLI.
+- **Public playlists, no session needed.** `suno.playlist(urlOrId)` and the CLI
+  `playlist <url|id>` read a share link the way suno.com does for anyone who
+  opens it: `GET /api/playlist/{id}?page=N`, clips under
+  `playlist_clips[].clip`, ordered by `relative_index`.
+  `suno.downloadPlaylist()` and `download --playlist <url|id> --out DIR` write
+  every track, through `playback` by default so the allowance is not touched;
+  pass `source: 'download'` for the metered path.
+
 ### Fixed
+
+- **`login --from-browser` no longer gives up on the first browser macOS
+  refuses.** Listing Brave's profile folder failed with `EPERM` and aborted the
+  whole search, although the session was sitting in Chrome. Measured on
+  2026-10-13. The refusal is now recorded like any other per-browser failure,
+  and reported only if no browser yields a session.
+- **Concurrent session saves no longer delete each other's scratch file.** The
+  sweep that clears temps left by a crashed save could remove one belonging to
+  a save still in flight, which then failed with `ENOENT` on chmod — about one
+  run in six of the concurrency test. In-flight saves are tracked, and temps
+  younger than 60 s are left alone for saves running in another process.
 
 - **A 404 on a route-level path no longer pages a human for a typo.** The path
   alone decided, so `/api/gen/trash` — which takes clip ids in its BODY, and

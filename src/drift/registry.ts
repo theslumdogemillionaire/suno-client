@@ -45,6 +45,14 @@ export const CONSUMED_PATHS: Record<string, readonly string[]> = {
   'lyrics.result': ['text', 'title', 'status'],
   'lyrics.aligned': ['aligned_words[].word', 'aligned_words[].start_s', 'aligned_words[].end_s'],
   'persona.get': ['persona.id', 'persona.name'],
+  'playlist.get': [
+    'name',
+    'num_total_results',
+    'playlist_clips[].relative_index',
+    'playlist_clips[].clip.id',
+    'playlist_clips[].clip.media_urls[].url',
+  ],
+  'mango.rights': ['key', 'iv', 'glt'],
 };
 
 /**

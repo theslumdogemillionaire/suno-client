@@ -44,15 +44,13 @@ export const ClipMetadataSchema = z
 /**
  * The one entry Suno puts in `media_urls`, as of 2026-09-10.
  *
- * NOT a download source. The URL is public and unauthenticated and answers 200
- * with `content-type: audio/mp4`, which makes it look like the obvious
- * replacement for `audio_url` — it is not. The payload measures 7.997 bits per
- * byte end to end and carries no `ftyp`, no `moov`, no container magic of any
- * kind: it is encrypted, and ffmpeg rejects it with "moov atom not found".
- * Verified on a `complete` clip whose sanctioned mp3 plays fine.
+ * Not the metered download path. The URL is public and unauthenticated and
+ * answers 200 with `content-type: audio/mp4`, which makes it look like the
+ * obvious replacement for `audio_url` — fetching it as-is writes ciphertext.
+ * The payload measures 7.997 bits per byte end to end and carries no `ftyp`.
  *
- * It is typed here so the drift detector stops reporting it and so the next
- * reader does not repeat that experiment. Playable audio comes from
+ * Playable bytes need the keys from `POST /api/mango/rights` — `playTrack`, or
+ * an explicit `source: 'playback'`. The default download path still uses
  * `/api/download/clip/{id}`; see `AUDIO_FORBIDDEN_URL`.
  *
  * `content_type` has only ever been seen as `m4a-opus`, `delivery` as
@@ -110,7 +108,7 @@ export const ClipSchema = z
     audio_url: z.string().nullish(),
     video_url: z.string().nullish(),
     image_url: z.string().nullish(),
-    /** Encrypted delivery metadata, never a download source. See MediaUrlSchema. */
+    /** Encrypted player delivery. See MediaUrlSchema and `playTrack`. */
     media_urls: z.array(MediaUrlSchema).nullish(),
     /**
      * Whether a metered download has been spent on this clip.

@@ -33,17 +33,31 @@ const USAGE = `suno-client <command>
   list [n]             most recent clips
   search <query>       search your library
   info <id>            one clip
+  playlist <url|id>    public playlist (no login)
   lyrics <prompt>      generate lyrics (free)
   generate             --title T --tags T --lyrics-file F [--model M] [--wait] [--download DIR]
   describe <prompt>    inspiration mode [--wait] [--download DIR]
-  download <id...>     --out DIR
+  download <id...>     --out DIR [--source download|playback]
+  download --playlist <url|id> --out DIR
+                       public playlist via playback (no quota)
   trash <id...>        move clips to trash
   restore <id...>      undo a trash
 
 Auth: SUNO_COOKIE, or a session stored by \`login\` (0600, under XDG config).
 `;
 
-const VALUED_FLAGS = ['out', 'browser', 'profile', 'model', 'title', 'tags', 'lyrics-file', 'download'];
+const VALUED_FLAGS = [
+  'out',
+  'browser',
+  'profile',
+  'model',
+  'title',
+  'tags',
+  'lyrics-file',
+  'download',
+  'source',
+  'playlist',
+];
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -352,11 +366,45 @@ async function main(): Promise<void> {
       return;
     }
 
+    case 'playlist': {
+      const id = positionals(rest)[0];
+      if (id === undefined) throw new SunoError({ code: 'invalid_input', message: 'usage: playlist <url|id>' });
+      const pl = await suno.playlist(id);
+      out({
+        id: pl.id,
+        name: pl.name,
+        user: pl.userHandle ?? pl.userDisplayName,
+        tracks: pl.clips.length,
+        clips: pl.clips.map((c) => ({ id: c.id, title: c.title, status: c.status })),
+      });
+      return;
+    }
+
     case 'download': {
+      const playlist = arg('playlist');
+      const sourceArg = arg('source');
+      if (sourceArg !== undefined && sourceArg !== 'download' && sourceArg !== 'playback') {
+        throw new SunoError({
+          code: 'invalid_input',
+          message: 'source must be download or playback',
+        });
+      }
+      const outputDir = arg('out') ?? './songs';
+      if (playlist !== undefined) {
+        const res = await suno.downloadPlaylist(playlist, {
+          outputDir,
+          source: sourceArg ?? 'playback',
+        });
+        out(res);
+        return;
+      }
       const ids = positionals(rest);
       if (ids.length === 0) throw new SunoError({ code: 'invalid_input', message: 'download needs at least one clip id' });
       const clips = await suno.get(ids);
-      const res = await suno.downloadAll(clips, { outputDir: arg('out') ?? './songs' });
+      const res = await suno.downloadAll(clips, {
+        outputDir,
+        ...(sourceArg !== undefined ? { source: sourceArg } : {}),
+      });
       out(res);
       return;
     }

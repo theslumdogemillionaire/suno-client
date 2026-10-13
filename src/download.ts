@@ -8,15 +8,28 @@ import NodeID3 from 'node-id3';
 
 import { alignedLyrics } from './api/misc.js';
 import { resolveDownloadUrl, type DownloadFormat } from './api/download-unlock.js';
+import { playTrack } from './api/mango.js';
 import type { SunoClient } from './client.js';
 import { SunoError } from './errors.js';
 import { isFetchableUrl, type AlignedWord, type Clip } from './schemas.js';
+
+export type DownloadSource = 'download' | 'playback';
 
 export interface DownloadOptions {
   /** Directory. Created if missing. */
   outputDir: string;
   /** Grab the mp4 instead of the mp3, when the clip has one. */
   video?: boolean;
+  /**
+   * Where the bytes come from.
+   *
+   * `download` (default) is the sanctioned button: quota, unlock, ID3-friendly
+   * mp3. `playback` is the player path, `playTrack` written to disk:
+   * `media_urls` ciphertext plus `POST /api/mango/rights`. It does not spend a
+   * credit and needs no session. Never mixed into the default path: a silent
+   * fallback would write an encrypted file the day rights fail.
+   */
+  source?: DownloadSource;
   /**
    * Write ID3 tags, including word-level synchronised lyrics when available.
    * Costs one extra request per clip; skip it for bulk archival.
@@ -73,9 +86,9 @@ export function clipFilename(title: string, id: string, ext: string): string {
  * `audio_url` is still tried first, and not out of nostalgia: it costs one
  * cheap string test, it is the only path that works without a second round
  * trip, and if Suno ever serves audio from it again this keeps working with no
- * change. `media_urls` is never consulted, here or anywhere: it answers 200 and
- * its payload is encrypted, so a fallback to it would write a corrupt file
- * instead of raising a clear error.
+ * change. `media_urls` is never consulted here: the ciphertext needs an
+ * explicit `source: 'playback'` so a failed rights call cannot look like a
+ * successful mp3.
  */
 async function resolveSource(
   client: SunoClient,
@@ -117,6 +130,10 @@ export async function downloadClip(
   clip: Clip,
   options: DownloadOptions,
 ): Promise<string> {
+  if (options.source === 'playback') {
+    return downloadPlayback(client, clip, options);
+  }
+
   const { url, ext } = await resolveSource(client, clip, options);
   await mkdir(options.outputDir, { recursive: true });
   const target = join(options.outputDir, clipFilename(clip.title, clip.id, ext));
@@ -153,6 +170,49 @@ export async function downloadClip(
       // Tagging is a nicety. A failure here must not lose the audio we already
       // have on disk.
     });
+  }
+
+  if (options.saveArtwork === true) {
+    await saveArtwork(clip, options.outputDir, options.signal).catch(() => undefined);
+  }
+
+  return target;
+}
+
+/**
+ * The player path, written to disk. `playTrack` has already checked the
+ * decrypted header by the time it returns, so whatever reaches the `.part`
+ * file is audio; this only adds progress and the atomic rename.
+ */
+async function downloadPlayback(
+  client: SunoClient,
+  clip: Clip,
+  options: DownloadOptions,
+): Promise<string> {
+  if (options.video === true) {
+    throw new SunoError({
+      code: 'invalid_input',
+      message: 'playback source is audio-only; drop video: true or use source: "download"',
+    });
+  }
+
+  await mkdir(options.outputDir, { recursive: true });
+  const playing = await playTrack(client, clip, options.signal ? { signal: options.signal } : {});
+  const target = join(options.outputDir, clipFilename(clip.title, clip.id, playing.ext));
+  const tmp = `${target}.part`;
+
+  let bytes = 0;
+  playing.stream.on('data', (chunk: Buffer) => {
+    bytes += chunk.length;
+    options.onProgress?.({ clipId: clip.id, bytes });
+  });
+
+  try {
+    await pipeline(playing.stream, createWriteStream(tmp));
+    await rename(tmp, target);
+  } catch (err) {
+    await unlink(tmp).catch(() => undefined);
+    throw err;
   }
 
   if (options.saveArtwork === true) {

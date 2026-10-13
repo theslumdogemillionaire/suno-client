@@ -47,6 +47,8 @@ import {
   type Waveform,
 } from './api/media.js';
 import { SunoClient, type SunoClientOptions } from './client.js';
+import { playTrack, type PlaybackStream } from './api/mango.js';
+import { getPlaylist, type Playlist } from './api/playlist.js';
 import { artworkUrl, downloadClip, downloadClips, type DownloadOptions } from './download.js';
 import { SunoError } from './errors.js';
 import { GenerationJob } from './poll.js';
@@ -306,6 +308,24 @@ export class Suno {
     return getClips(this.client, ids, signal);
   }
 
+  /**
+   * Public playlist by share link or id. No session required: this is the GET
+   * suno.com makes for anyone who opens the link.
+   */
+  playlist(idOrUrl: string, signal?: AbortSignal): Promise<Playlist> {
+    return getPlaylist(this.client, idOrUrl, signal ? { signal } : {});
+  }
+
+  /**
+   * Decrypted audio stream, obtained the way suno.com's player gets it, with
+   * no download credit spent. An id is looked up first, which needs a session;
+   * pass a `Clip` (from `playlist()`, say) to play signed out.
+   */
+  async playTrack(idOrClip: string | Clip, signal?: AbortSignal): Promise<PlaybackStream> {
+    const clip = typeof idOrClip === 'string' ? await this.info(idOrClip, signal) : idOrClip;
+    return playTrack(this.client, clip, signal ? { signal } : {});
+  }
+
   async info(id: string, signal?: AbortSignal): Promise<Clip> {
     const [clip] = await getClips(this.client, [id], signal);
     if (!clip) throw new SunoError({ code: 'not_found', message: `no clip with id ${id}` });
@@ -426,5 +446,21 @@ export class Suno {
 
   downloadAll(clips: readonly Clip[], options: DownloadOptions): ReturnType<typeof downloadClips> {
     return downloadClips(this.client, clips, options);
+  }
+
+  /**
+   * Fetch a public playlist and write every clip. Defaults to `playback` so it
+   * does not spend the account's download quota; pass `source: 'download'` to
+   * use the sanctioned button instead.
+   */
+  async downloadPlaylist(
+    idOrUrl: string,
+    options: DownloadOptions,
+  ): ReturnType<typeof downloadClips> {
+    const playlist = await getPlaylist(this.client, idOrUrl, options.signal ? { signal: options.signal } : {});
+    return downloadClips(this.client, playlist.clips, {
+      ...options,
+      source: options.source ?? 'playback',
+    });
   }
 }

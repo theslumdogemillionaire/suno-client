@@ -47,7 +47,33 @@ export {
   type SetMetadataOptions,
 } from './api/misc.js';
 
-export { artworkUrl, downloadClip, downloadClips, clipFilename, type DownloadOptions } from './download.js';
+export {
+  artworkUrl,
+  downloadClip,
+  downloadClips,
+  clipFilename,
+  type DownloadOptions,
+  type DownloadSource,
+} from './download.js';
+export {
+  PLAYLIST_PATH,
+  extractPlaylistId,
+  getPlaylist,
+  type Playlist,
+  type PlaylistPage,
+} from './api/playlist.js';
+export {
+  MANGO_RIGHTS_PATH,
+  createMangoDecipher,
+  decryptMangoAudio,
+  isPlayableAudio,
+  mangoRights,
+  pickPlaybackMedia,
+  playTrack,
+  type MangoRights,
+  type PlaybackStream,
+  type PlayTrackOptions,
+} from './api/mango.js';
 export {
   DOWNLOAD_FORMATS,
   authorizeDownload,
