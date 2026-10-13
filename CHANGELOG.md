@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 (2026-10-13)
+
+Playback without the download allowance: `playTrack()` streams a clip the way
+suno.com's player does, and public playlists can be read and saved without a
+session. The playback path was measured on a live Pro account before release —
+see `docs/API.md` §3.16, which records what `/api/mango/rights` actually checks
+(less than expected) and why the client never sends it a session.
 
 ### Added
 
