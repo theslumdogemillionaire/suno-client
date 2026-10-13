@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { chmod, mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 
 import type { AuthState } from './auth.js';
 import { SunoError } from './errors.js';
@@ -26,6 +26,23 @@ export function defaultAuthPath(): string {
   const base = xdg !== undefined && xdg !== '' ? xdg : join(homedir(), '.config');
   return join(base, 'suno-client', 'auth.json');
 }
+
+/**
+ * Scratch files a save in this process is still writing. The sweep must never
+ * touch these: the client refreshes its JWT from several call sites, so one
+ * save's sweep routinely runs while another save sits between writeFile and
+ * rename. Module-wide, because the CLI and the client each build their own
+ * store on the same path. Keyed by resolved path: a SUNO_AUTH_FILE spelled
+ * `./auth.json` must still match the name the sweep rebuilds from readdir.
+ */
+const inFlightTemps = new Set<string>();
+
+/**
+ * How old a scratch file must be before the sweep treats it as a crashed
+ * save's leftover. The age check is what protects other processes' saves,
+ * which the in-flight set cannot see; a real save spends milliseconds there.
+ */
+const STALE_TEMP_MS = 60_000;
 
 export class FileAuthStore implements AuthStore {
   constructor(private readonly path: string = defaultAuthPath()) {}
@@ -59,6 +76,7 @@ export class FileAuthStore implements AuthStore {
     // (the client refreshes its JWT from several call sites): both write the
     // same file, the first rename consumes it, and the second fails ENOENT.
     const tmp = `${this.path}.${randomUUID()}.tmp`;
+    inFlightTemps.add(resolve(tmp));
     try {
       await writeFile(tmp, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
       await chmod(tmp, 0o600);
@@ -66,6 +84,8 @@ export class FileAuthStore implements AuthStore {
     } catch (err) {
       await unlink(tmp).catch(() => undefined);
       throw err;
+    } finally {
+      inFlightTemps.delete(resolve(tmp));
     }
     // Unique names mean a crashed save leaves its scratch file behind forever,
     // and each one holds a session cookie. Sweep them on the next successful
@@ -80,7 +100,15 @@ export class FileAuthStore implements AuthStore {
     await Promise.all(
       entries
         .filter((name) => name.startsWith(prefix) && name.endsWith('.tmp'))
-        .map((name) => unlink(join(dir, name)).catch(() => undefined)),
+        .map((name) => join(dir, name))
+        .filter((tmp) => !inFlightTemps.has(resolve(tmp)))
+        .map(async (tmp) => {
+          // A young temp may be another process's save between writeFile and
+          // rename; deleting it would fail that save with ENOENT.
+          const info = await stat(tmp).catch(() => undefined);
+          if (info === undefined || Date.now() - info.mtimeMs < STALE_TEMP_MS) return;
+          await unlink(tmp).catch(() => undefined);
+        }),
     );
   }
 

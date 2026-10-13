@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -145,7 +145,20 @@ describe('the session file tolerates concurrency', () => {
     // with files that each hold a session cookie.
     const path = join(dir, 'auth.json');
     await writeFile(`${path}.aaaa-bbbb.tmp`, 'garbage from a killed process');
+    // Old enough to be a leftover rather than another process mid-save.
+    const longAgo = new Date(Date.now() - 10 * 60_000);
+    await utimes(`${path}.aaaa-bbbb.tmp`, longAgo, longAgo);
     await new FileAuthStore(path).save({ clerkClientCookie: 'fresh' });
     expect(await readdir(dir)).toEqual(['auth.json']);
+  });
+
+  it('spares a scratch file another process is still writing', async () => {
+    // The sweep cannot see another process's in-flight set; a fresh temp may
+    // be that process between its writeFile and its rename.
+    const path = join(dir, 'auth.json');
+    const foreign = `${path}.cccc-dddd.tmp`;
+    await writeFile(foreign, '{"clerkClientCookie": "other process"}');
+    await new FileAuthStore(path).save({ clerkClientCookie: 'fresh' });
+    expect((await readdir(dir)).sort()).toEqual(['auth.json', 'auth.json.cccc-dddd.tmp']);
   });
 });

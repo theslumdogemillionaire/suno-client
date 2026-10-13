@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readdir, readFile, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -187,6 +187,9 @@ describe('FileAuthStore', () => {
   it('overwrites a stale temp file instead of failing the next save', async () => {
     const store = new FileAuthStore(authPath());
     await writeFile(`${authPath()}.tmp`, 'garbage from a killed process');
+    // Backdated: the sweep spares young temps, which may be a save in flight.
+    const longAgo = new Date(Date.now() - 10 * 60_000);
+    await utimes(`${authPath()}.tmp`, longAgo, longAgo);
     await store.save(SESSION);
     await expect(store.load()).resolves.toEqual(SESSION);
     expect(await readdir(dir)).toEqual(['auth.json']);
