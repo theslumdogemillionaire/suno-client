@@ -418,7 +418,17 @@ export async function findSessionCookies(options: FindCookieOptions = {}): Promi
   for (const browser of wanted) {
     const root = profileRoot(browser);
     if (root === undefined) continue;
-    const profiles = profileDirs(root).filter((p) => options.profile === undefined || p === options.profile);
+    // One browser macOS will not let us list (EPERM: the app running this has
+    // not been allowed into that browser's data) must not hide a session
+    // sitting in another one. Recorded like every other per-browser failure.
+    let dirs: string[];
+    try {
+      dirs = profileDirs(root);
+    } catch (err) {
+      errors.push(`${BROWSERS[browser].label}: cannot list ${root} (${err instanceof Error ? err.message : String(err)})`);
+      continue;
+    }
+    const profiles = dirs.filter((p) => options.profile === undefined || p === options.profile);
     if (profiles.length === 0) continue;
 
     let key: Buffer;
