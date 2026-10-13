@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **`npm publish` no longer warns about the `bin` entry.** The release job
+  logged `"bin[suno-client]" script name dist/esm/cli.js was invalid and
+  removed`. Despite the wording, nothing was removed: npm 11 only strips the
+  leading `./` from `"./dist/esm/cli.js"`, a prefix there since 0.1.0, and
+  keeps the entry. `bin` now holds the bare `dist/esm/cli.js`, so nothing is
+  left to correct. The published 0.4.0 tarball, the registry metadata of every
+  release, and `npx suno-client --help` after a registry install were checked
+  on 2026-10-13: the command was always there.
+
 ## 0.4.0 (2026-10-13)
 
 Playback without the download allowance: `playTrack()` streams a clip the way
