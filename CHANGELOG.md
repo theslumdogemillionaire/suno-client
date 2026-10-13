@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 (2026-10-13)
 
 A full review of the client, and the fixes it called for. Several touch money:
 a cancelled create could still be sent and billed, and a stem separation could
