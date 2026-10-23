@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 (2026-10-23)
 
 The social and library half of the web app: likes, follows, public profiles, the
 account's own playlists, and search across everyone's songs. Every route was
@@ -66,9 +66,10 @@ details are in `docs/API.md` §3.17 to §3.25; what they cost to learn is in
   `relativeIndex` Suno sent (fractional ones included, `undefined` when none was
   sent; the old fallback position is never handed out as an index). `clips` is
   unchanged.
-- **`getPlaylist()` takes `signedIn`**, to read with the session. Off by default,
-  so a shared playlist still reads anonymously; whether an anonymous read can see a
-  private playlist is unverified.
+- **`getPlaylist()` and `suno.playlist()` take `signedIn`**, to read with the
+  session. Off by default, so a shared playlist still reads anonymously; whether an
+  anonymous read can see a private playlist is unverified. `suno.playlist()` now
+  takes an options object (`{ signedIn, signal }`); a bare `AbortSignal` still works.
 - **Seven more route-level paths.** An HTML 404 on `/api/search`,
   `/api/profiles/follow`, `/api/playlist/me` or one of the four playlist writes is
   `route_gone`, with `alert`. A JSON 404 there, an unknown playlist or handle, stays
