@@ -1,14 +1,21 @@
-import type { SunoClient } from '../client.js';
-import { ClipsArraySchema, FeedPageSchema, type Clip, type FeedPage } from '../schemas.js';
+import { pathSegment, type SunoClient } from '../client.js';
+import { requestWithSessionIfAny } from '../internal/session.js';
+import { ClipSchema, ClipsArraySchema, FeedPageSchema, type Clip, type FeedPage } from '../schemas.js';
 
 export const FEED_V3_PATH = '/api/feed/v3';
 export const FEED_BY_IDS_PATH = '/api/feed/';
+export const CLIP_PATH = '/api/clip';
 
 export interface FeedFiltersWire {
   searchText?: string;
   trashed?: string;
   fullSong?: string;
   stem?: { presence: string };
+  /**
+   * A capitalised string, like `trashed`. The `{ presence: "True" }` form that
+   * `stem` takes is accepted and ignored: it returns the whole library.
+   */
+  liked?: string;
 }
 
 export interface ListOptions {
@@ -19,6 +26,8 @@ export interface ListOptions {
    */
   cursor?: string;
   limit?: number;
+  /** Only the clips this account has liked. Sends `liked` and `trashed` filters. */
+  liked?: boolean;
   signal?: AbortSignal;
 }
 
@@ -28,6 +37,7 @@ export async function listClips(client: SunoClient, options: ListOptions = {}): 
   };
   // Omit the key entirely on page one. Sending `cursor: null` is not the same.
   if (options.cursor !== undefined) body.cursor = options.cursor;
+  if (options.liked === true) body.filters = { liked: 'True', trashed: 'False' };
 
   return client.request({
     method: 'POST',
@@ -42,7 +52,7 @@ export async function listClips(client: SunoClient, options: ListOptions = {}): 
 /** Walk every page. Yields clips one at a time so a huge library stays streamable. */
 export async function* iterateClips(
   client: SunoClient,
-  options: { limit?: number; maxPages?: number; signal?: AbortSignal } = {},
+  options: { limit?: number; maxPages?: number; liked?: boolean; signal?: AbortSignal } = {},
 ): AsyncGenerator<Clip, void, undefined> {
   let cursor: string | undefined;
   let pages = 0;
@@ -52,6 +62,7 @@ export async function* iterateClips(
     const page: FeedPage = await listClips(client, {
       ...(cursor !== undefined ? { cursor } : {}),
       ...(options.limit !== undefined ? { limit: options.limit } : {}),
+      ...(options.liked !== undefined ? { liked: options.liked } : {}),
       ...(options.signal ? { signal: options.signal } : {}),
     });
     for (const clip of page.clips) yield clip;
@@ -111,4 +122,23 @@ export async function getClips(
     out.push(...clips);
   }
   return out;
+}
+
+/**
+ * One clip by id, from the endpoint suno.com's song page reads.
+ *
+ * Unlike feed-by-ids this is not limited to the account's own clips, and it
+ * needs no session: a public clip answers anonymously with its `media_urls`,
+ * so the result can go straight to `playTrack`. Measured 2026-10-23, the
+ * account's own private clip answered anonymously too. Signed in, the session
+ * is sent and the answer gains `is_download_unlocked`. An unknown id is a 404.
+ */
+export async function getClip(client: SunoClient, id: string, signal?: AbortSignal): Promise<Clip> {
+  return requestWithSessionIfAny(client, {
+    method: 'GET',
+    path: `${CLIP_PATH}/${pathSegment(id)}`,
+    schema: ClipSchema,
+    endpointKey: 'clip.get',
+    ...(signal ? { signal } : {}),
+  });
 }

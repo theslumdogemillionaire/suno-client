@@ -36,16 +36,43 @@ export {
   type AccountTier,
 } from './api/account.js';
 
-export { iterateClips, listClips, getClips, searchClips, type ListOptions } from './api/feed.js';
+export { CLIP_PATH, iterateClips, listClips, getClip, getClips, searchClips, type ListOptions } from './api/feed.js';
 export {
   alignedLyrics,
   billingInfo,
   captchaCheck,
   generateLyrics,
+  setReaction,
   toLrc,
   type LyricsOptions,
+  type ReactionType,
   type SetMetadataOptions,
 } from './api/misc.js';
+export {
+  MAX_SEARCH_SIZE,
+  SEARCH_PATH,
+  SEARCH_RANKINGS,
+  searchPublic,
+  type PublicSearchOptions,
+  type PublicSearchPage,
+  type SearchRanking,
+} from './api/search.js';
+export {
+  FOLLOW_PATH,
+  PROFILES_PATH,
+  PROFILE_PAGE_SIZE,
+  getProfile,
+  iterateFollowers,
+  iterateFollowing,
+  iterateProfileClips,
+  listFollowers,
+  listFollowing,
+  setFollowing,
+  type FollowPage,
+  type ProfileOptions,
+  type ProfilePage,
+  type ProfileSummary,
+} from './api/profile.js';
 
 export {
   artworkUrl,
@@ -56,11 +83,28 @@ export {
   type DownloadSource,
 } from './download.js';
 export {
+  MY_PLAYLISTS_PATH,
+  PLAYLIST_CREATE_PATH,
   PLAYLIST_PATH,
+  PLAYLIST_SET_METADATA_PATH,
+  PLAYLIST_TRASH_PATH,
+  PLAYLIST_UPDATE_CLIPS_PATH,
+  addPlaylistClips,
+  createPlaylist,
   extractPlaylistId,
   getPlaylist,
+  iterateMyPlaylists,
+  listMyPlaylists,
+  removePlaylistClips,
+  setPlaylistMetadata,
+  setPlaylistTrashed,
+  type GetPlaylistOptions,
+  type MyPlaylistsPage,
   type Playlist,
+  type PlaylistEntry,
   type PlaylistPage,
+  type PlaylistSummary,
+  type SetPlaylistMetadataOptions,
 } from './api/playlist.js';
 export {
   MANGO_RIGHTS_PATH,
@@ -143,6 +187,7 @@ export { CONSUMED_PATHS, loadBaselines, registryFromBaselines, registryFromMap }
 export {
   AUDIO_FORBIDDEN_URL,
   BillingInfoSchema,
+  ClipReactionSchema,
   ClipSchema,
   ClipStatus,
   FeedPageSchema,
@@ -156,6 +201,7 @@ export {
   type BillingInfo,
   type CaptchaCheck,
   type Clip,
+  type ClipReaction,
   type FeedPage,
   type LyricsResult,
   type MediaUrl,

@@ -4,6 +4,7 @@ import {
   AlignedLyricsSchema,
   BillingInfoSchema,
   CaptchaCheckSchema,
+  ClipReactionSchema,
   ClipSchema,
   LyricsResultSchema,
   LyricsSubmitSchema,
@@ -12,6 +13,7 @@ import {
   type BillingInfo,
   type CaptchaCheck,
   type Clip,
+  type ClipReaction,
   type LyricsResult,
   type PersonaInfo,
 } from '../schemas.js';
@@ -196,6 +198,32 @@ export async function setVisibility(
     path: `/api/gen/${pathSegment(clipId)}/set_visibility/`,
     body: { is_public: isPublic },
     endpointKey: 'clip.setVisibility',
+    ...(signal ? { signal } : {}),
+  });
+}
+
+/** The reactions `update_reaction_type` is known to take. `null` removes one. */
+export type ReactionType = 'LIKE';
+
+/**
+ * Like a clip, or take the like back.
+ *
+ * Verified 2026-10-23: `{"reaction": "LIKE"}` adds the clip to the liked feed
+ * (`listClips({ liked: true })`) and `{"reaction": null}` removes it. Setting
+ * a state rather than toggling one, so a replay is harmless.
+ */
+export async function setReaction(
+  client: SunoClient,
+  clipId: string,
+  reaction: ReactionType | null,
+  signal?: AbortSignal,
+): Promise<ClipReaction> {
+  return client.request({
+    method: 'POST',
+    path: `/api/gen/${pathSegment(clipId)}/update_reaction_type/`,
+    body: { reaction },
+    schema: ClipReactionSchema,
+    endpointKey: 'clip.reaction',
     ...(signal ? { signal } : {}),
   });
 }

@@ -390,3 +390,30 @@ describe('a 404 on a route-level path', () => {
     expect(looksLikeMissingRoute('upstream connect error')).toBe(true);
   });
 });
+
+describe('the routes added in 0.6.0', () => {
+  // Each takes its ids in the body or the query, so the path alone names the
+  // route: an HTML 404 there can only mean the route moved.
+  const routes = [
+    '/api/search',
+    '/api/profiles/follow',
+    '/api/playlist/me',
+    '/api/playlist/create/',
+    '/api/playlist/update_clips/',
+    '/api/playlist/set_metadata/',
+    '/api/playlist/trash/',
+  ];
+
+  it('report an HTML 404 as the route moving', () => {
+    for (const path of routes) {
+      expect(isRouteLevelPath(path), path).toBe(true);
+      expect(classifyHttpError(404, '<!doctype html><title>Not Found</title>', path).code, path).toBe('route_gone');
+    }
+  });
+
+  it('report a JSON 404, an unknown playlist or handle, as not_found', () => {
+    for (const path of routes) {
+      expect(classifyHttpError(404, '{"detail": "Not found."}', path).code, path).toBe('not_found');
+    }
+  });
+});

@@ -32,8 +32,10 @@ const USAGE = `suno-client <command>
   credits              plan and remaining credits
   models               models this account can use
   list [n]             most recent clips
+  liked [n]            clips this account has liked
   search <query>       search your library
-  info <id>            one clip
+  info <id>            one clip, anyone's (no login needed)
+  profile <handle>     public profile and its first page of clips (no login)
   playlist <url|id>    public playlist (no login)
   lyrics <prompt>      generate lyrics (free)
   generate             --title T --tags T --lyrics-file F [--model M] [--wait] [--download DIR]
@@ -358,6 +360,16 @@ async function main(): Promise<void> {
       return;
     }
 
+    case 'liked': {
+      const limit = Number(rest[0] ?? 20);
+      if (!Number.isFinite(limit) || limit <= 0) {
+        throw new Error(`liked takes a count, got ${JSON.stringify(rest[0])}`);
+      }
+      const page = await suno.list({ limit, liked: true });
+      out(page.clips.map((c) => ({ id: c.id, title: c.title, created: c.created_at })));
+      return;
+    }
+
     case 'search': {
       const query = rest.join(' ');
       const page = await suno.search(query);
@@ -402,6 +414,20 @@ async function main(): Promise<void> {
       const job = await suno.describe({ prompt: positionals(rest).join(' ') });
       out({ submitted: job.ids });
       await finish(suno, job);
+      return;
+    }
+
+    case 'profile': {
+      const handle = positionals(rest)[0];
+      if (handle === undefined) throw new SunoError({ code: 'invalid_input', message: 'usage: profile <handle>' });
+      const p = await suno.profile(handle);
+      out({
+        handle: p.handle,
+        name: p.display_name,
+        followers: p.stats?.followers_count,
+        following: p.stats?.following_count,
+        clips: p.clips.map((c) => ({ id: c.id, title: c.title, created: c.created_at })),
+      });
       return;
     }
 

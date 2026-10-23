@@ -77,6 +77,13 @@ consumed paths for that endpoint precisely because it is not universal.
 | Download + ID3 | `suno.download()` | Synced lyrics embedded as SYLT |
 | Trash and restore | `suno.trash()`, `suno.restore()` | |
 | Stems | `suno.stems()` | Job runs; response shape is not a clip |
+| Any clip by id | `suno.info()` | Signed out too, since 0.6.0 |
+| Liked clips | `suno.list({ liked: true })`, `suno.iterate({ liked: true })` | Same cursor paging |
+| Like and unlike | `suno.like()`, `suno.unlike()` | |
+| Public profile | `suno.profile()`, `suno.profileClips()` | No session needed |
+| Follow, unfollow, follow lists | `suno.follow()`, `suno.unfollow()`, `suno.following()`, `suno.followers()` | The lists need a session |
+| Own playlists | `suno.myPlaylists()`, `suno.createPlaylist()`, `suno.addToPlaylist()`, `suno.removeFromPlaylist()`, `suno.updatePlaylist()`, `suno.trashPlaylist()` | `restorePlaylist()` is unverified |
+| Public search | `suno.searchPublic()` | About 200 results deep at most |
 
 A generation measured end to end on 2026-08-17: submitted, `queued` at 4s,
 `streaming` at 22s, both clips `complete` at 145s, two MP3s on disk at ~185 kbps
@@ -219,6 +226,46 @@ verified on two of them, and the download counter did not move. What it will
 never do on its own is call `authorize`: `authorizeDownload()` is exported and
 nothing in the library calls it, because spending a metered download has to be
 somebody's decision rather than something a retry loop can reach.
+
+## Likes, follows, playlists and public search (measured 2026-10-23)
+
+Everything in this section was exercised live on 2026-10-23, the writes included. A
+like was checked through the liked feed and a follow through the profile's
+`is_following`; the playlist writes, by what they answered. Wire details are
+in [API.md](API.md) §3.17 to §3.25. Four things in it are worth knowing before building
+on it.
+
+**`GET /api/clip/{id}` is not an access check either.** Asked anonymously, it returned
+the account's own private clip in full, `media_urls` included, the same finding as
+`/api/mango/rights`. It is what makes `suno.info(id)` and `suno.playTrack(id)` work signed
+out. Signed in, the client still reads the account's own clips from `/api/feed/?ids=` and
+only falls back to this route when that has nothing.
+
+**Creating a playlist validates nothing.** `POST /api/playlist/create/` accepts any body,
+`{}` included, and creates a playlist called "Untitled". `createPlaylist()` refuses an
+empty name before sending. Create, add and remove are never retried: a replay after a
+slow success would create a second playlist, add the clips twice, or remove by a
+position that has since moved.
+
+**Removing from a playlist goes by position.** Without `indexes` the route answers 400
+`remove_indexes_invalid`, and the index is the playlist's own `relative_index`, which
+can be fractional. `suno.removeFromPlaylist(playlist, clipIds)` reads the playlist with
+the session first to find them. The lower-level `removePlaylistClips()` takes the
+`entries` of a `Playlist` and refuses one without an index rather than guess.
+
+**Public search is a window, not an index you can walk.** `size` goes up to 1000 and
+returns about 780 to 790 songs; `from_index` beyond roughly 200 returns nothing, so
+`totalHits` (thousands) is not reachable by paging. It is also not `suno.search()`,
+which filters the account's own library.
+
+Two smaller traps: the liked filter is `{"liked": "True"}`, a capitalised string like
+`trashed`, and the `{"liked": {"presence": "True"}}` form the `stem` filter suggests is
+accepted and ignored, returning the whole library. And the follow lists answer 401
+anonymously while the profile they belong to reads fine without a session.
+
+Not verified: that `undo_trash: true` restores a trashed playlist (`restorePlaylist()`
+sends it), and whether an anonymous read can see a private playlist. The client reads
+the account's own playlists with the session wherever it needs their contents.
 
 ## The captcha gate does block creates (measured 2026-08-18)
 

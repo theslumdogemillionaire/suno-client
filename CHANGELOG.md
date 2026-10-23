@@ -1,5 +1,79 @@
 # Changelog
 
+## Unreleased
+
+The social and library half of the web app: likes, follows, public profiles, the
+account's own playlists, and search across everyone's songs. Every route was
+exercised live on 2026-10-23, writes included; a like and a follow were also checked
+from the other side, through the liked feed and through `is_following`. Wire
+details are in `docs/API.md` §3.17 to §3.25; what they cost to learn is in
+`docs/STATUS.md`.
+
+### Added
+
+- **Likes.** `suno.like(id)` and `suno.unlike(id)`, over
+  `POST /api/gen/{id}/update_reaction_type/` (`setReaction()`). They return the
+  clip's reaction state; `reaction_type` is `"L"` after a like and absent after an
+  unlike.
+- **Liked clips.** `liked: true` on `list()` / `iterate()` (and `listClips()` /
+  `iterateClips()`) sends `filters: {"liked": "True", "trashed": "False"}` and pages
+  by cursor like the rest of the feed. The object form `{"presence": "True"}` that
+  `stem` takes is accepted by Suno and ignored, which returns the whole library.
+- **Public profiles, no session needed.** `suno.profile(handle)` reads one page
+  (`getProfile()`), and `suno.profileClips(handle)` walks every public clip once:
+  pinned clips repeat further down, so it deduplicates by id and stops on an empty
+  or short page rather than trusting `num_total_clips`. Signed in, the session is
+  sent so `is_following` is about this account.
+- **Follows.** `suno.follow(handle)`, `suno.unfollow(handle)`, and the lists
+  `suno.following(handle)` and `suno.followers(handle)` (`listFollowing()`,
+  `listFollowers()` for one page). The lists need a session: anonymous, Suno
+  answers 401.
+- **One clip by id, anyone's.** `getClip()` reads `GET /api/clip/{id}`, which
+  needs no session and answers with `media_urls`. Measured: anonymously it also
+  returned the account's own private clip.
+- **The account's playlists.** `suno.myPlaylists()` (`listMyPlaylists()`,
+  `iterateMyPlaylists()`), `suno.createPlaylist(name)`,
+  `suno.addToPlaylist(playlist, clipIds)`, `suno.removeFromPlaylist(playlist,
+  clipIds)`, `suno.updatePlaylist(playlist, { name, description })`,
+  `suno.trashPlaylist(playlist)` and `suno.restorePlaylist(playlist)`. Create
+  validates the name here, because the server accepts any body and makes an
+  "Untitled" playlist; create, add and remove are never retried. Removing needs
+  each clip's position, so `removeFromPlaylist` reads the playlist with the session
+  first. `restorePlaylist` sends `undo_trash: true` and is unverified.
+- **Public search.** `suno.searchPublic(term, { size, fromIndex, rankBy })` is
+  suno.com's search box over everyone's public songs (`POST /api/search`), and
+  returns `{ clips, totalHits, fromIndex, pageSize }`. Not `search()`, which
+  filters the account's own library. `size` goes to 1000; `fromIndex` past about
+  200 returns nothing.
+- **CLI.** `liked [n]`, and `profile <handle>`, which needs no login.
+- **Drift.** Consumed paths are registered for the new reads (`clip.get`,
+  `profile.*`, `playlist.mine`, `search.public`). No baselines ship for them yet,
+  as for `playlist.get`, so they report nothing until some are recorded.
+
+### Changed (read before upgrading)
+
+- **`suno.info(id)` falls back to the public clip route.** It still reads
+  `/api/feed/?ids=` first when a session is stored, so the account's own clips,
+  rendering ones included, read exactly as before. When that finds nothing (an
+  empty answer or a 404), or no session is stored at all, it now asks
+  `GET /api/clip/{id}` instead of failing: a clip from another creator used to be
+  `not_found` signed in and `auth_missing` signed out. An id neither route knows is
+  still `not_found`, now from the second route. `suno.track()`, the CLI `info`, and
+  `suno.playTrack(id)` all go through it, so **`playTrack(id)` works signed out**.
+  `suno.get()` and `suno.job()` are unchanged: feed-by-ids stays the polling
+  primitive.
+- **`Playlist` gains `entries`**, the same clips in the same order, each with the
+  `relativeIndex` Suno sent (fractional ones included, `undefined` when none was
+  sent; the old fallback position is never handed out as an index). `clips` is
+  unchanged.
+- **`getPlaylist()` takes `signedIn`**, to read with the session. Off by default,
+  so a shared playlist still reads anonymously; whether an anonymous read can see a
+  private playlist is unverified.
+- **Seven more route-level paths.** An HTML 404 on `/api/search`,
+  `/api/profiles/follow`, `/api/playlist/me` or one of the four playlist writes is
+  `route_gone`, with `alert`. A JSON 404 there, an unknown playlist or handle, stays
+  `not_found`.
+
 ## 0.5.0 (2026-10-13)
 
 A full review of the client, and the fixes it called for. Several touch money:

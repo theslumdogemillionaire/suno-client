@@ -3,7 +3,7 @@
 [![ci](https://github.com/theslumdogemillionaire/suno-client/actions/workflows/ci.yml/badge.svg)](https://github.com/theslumdogemillionaire/suno-client/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/suno-client?logo=npm&color=cb3837)](https://www.npmjs.com/package/suno-client)
 [![module formats](https://img.shields.io/badge/ESM%20%2B%20CJS-dual-informational)](package.json)
-[![tests](https://img.shields.io/badge/tests-281%20passing-brightgreen)](tests/unit)
+[![tests](https://img.shields.io/badge/tests-411%20passing-brightgreen)](tests/unit)
 [![typescript](https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white)](tsconfig.json)
 [![node](https://img.shields.io/badge/node-%E2%89%A522.13-339933?logo=nodedotjs&logoColor=white)](package.json)
 [![license](https://img.shields.io/badge/license-WTFPL-black)](LICENSE)
@@ -336,10 +336,45 @@ file, asks `POST /api/mango/rights` for its keys in parallel, and decrypts as
 the bytes arrive. It spends no download from the monthly allowance.
 
 The rights call always goes out anonymous: sent with a session, Suno answers
-without the token the decryption needs. It needs no session at all, then, but
-`suno.playTrack(id)` looks the id up first, and that does. Signed out, pass a
-`Clip` instead — `suno.playlist(url)` gives you those without one. Details,
-measured on a live account, in [docs/API.md §3.16](docs/API.md).
+without the token the decryption needs. Since 0.6.0 the id lookup needs no
+session either, so `suno.playTrack(id)` works signed out, for any public clip.
+Details, measured on a live account, in [docs/API.md §3.16](docs/API.md).
+
+## Likes, follows and playlists
+
+```ts
+await suno.like(clipId);
+for await (const clip of suno.iterate({ liked: true })) console.log(clip.title);
+
+const profile = await suno.profile('example_user');   // no session needed
+for await (const clip of suno.profileClips('example_user')) console.log(clip.id);
+await suno.follow('example_user');
+for await (const person of suno.following('example_user')) console.log(person.handle);
+
+const playlist = await suno.createPlaylist('Night Drive');   // starts private
+await suno.addToPlaylist(playlist.id, [clipId]);
+await suno.removeFromPlaylist(playlist.id, [clipId]);
+await suno.updatePlaylist(playlist.id, { name: 'Night Drive II', description: 'after midnight' });
+for await (const p of suno.myPlaylists()) console.log(p.name);
+await suno.trashPlaylist(playlist.id);
+```
+
+Suno removes from a playlist by position as well as by id, so
+`removeFromPlaylist` reads the playlist first to find each clip. `updatePlaylist`
+needs both fields: the server wants a description with every rename. Creating a
+playlist is never retried, and neither is adding to one, because a replay would
+do it twice. `restorePlaylist` exists and has not been seen working.
+
+## Searching all of Suno
+
+```ts
+const page = await suno.searchPublic('piano ballad', { size: 100, rankBy: 'play_count' });
+// { clips, totalHits, fromIndex, pageSize }
+```
+
+This is suno.com's search box: everyone's public songs. `suno.search()` is
+something else, a filter over your own library. Public search serves a window:
+`fromIndex` past about 200 returns nothing, whatever `totalHits` says.
 
 ## Looking like a browser
 

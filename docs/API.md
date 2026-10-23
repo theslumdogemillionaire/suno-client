@@ -23,6 +23,7 @@ Every endpoint carries a confidence marker. Do not treat them as equal.
 | `INFERRED` | Implemented in the reference client from third-party evidence, never captured. |
 | `BROKEN` | Live-tested today and it failed. The correct shape is unknown. |
 | `LIVE 2026-10-13` | Exercised against a real Pro account (playback keys, 3.16). |
+| `LIVE 2026-10-23` | Exercised against a real account (public reads, likes, follows, playlists, search: 3.17 to 3.25). |
 
 Three inputs were reconciled to produce this document, in descending authority:
 
@@ -299,7 +300,12 @@ cosmetic. Do not run paths through a URL normalizer.
 | `/api/gen/{id}/set_metadata/` | |
 | `/api/gen/{id}/set_visibility/` | |
 | `/api/gen/{id}/aligned_lyrics/v2/` | `/api/mango/rights` |
-| `/api/persona/get-persona-paginated/{id}/` (slash before the query) | |
+| `/api/persona/get-persona-paginated/{id}/` (slash before the query) | `/api/clip/{id}` |
+| `/api/gen/{id}/update_reaction_type/` | `/api/profiles/{handle}` (and `/following`, `/followers`) |
+| `/api/playlist/create/` | `/api/profiles/follow` |
+| `/api/playlist/update_clips/` | `/api/playlist/{id}`, `/api/playlist/me` |
+| `/api/playlist/set_metadata/` | `/api/search` |
+| `/api/playlist/trash/` | |
 
 ### Shared response types
 
@@ -730,11 +736,15 @@ interface FeedFilters {
   trashed?: string;       // a STRING. The reference sends "False" (capital F)
   fullSong?: string;      // camelCase on the wire
   stem?: { presence: string };
+  liked?: string;         // "True": only clips this account liked. LIVE 2026-10-23
 }
 ```
 
 Exact first-page list body: `{"limit":20}`.
 Exact search body: `{"limit":50,"filters":{"searchText":"<q>","trashed":"False"}}`.
+Exact liked body: `{"limit":20,"filters":{"liked":"True","trashed":"False"}}`. Every clip
+it returned had `is_liked: true`. The `stem`-style `{"liked": {"presence": "True"}}` is
+accepted and **ignored**: it returns the whole library. Paging is the same cursor walk.
 
 Note the casing split: the outer body is snake_case (`cursor`, `limit`, `filters`), the
 keys **inside** `filters` are camelCase.
@@ -1023,6 +1033,350 @@ Client: `playTrack(client, clip)` returns the decrypted stream; `downloadClip` w
 
 ---
 
+### 3.17 `GET /api/clip/{clip_id}`: one clip, anyone's
+
+`LIVE 2026-10-23`
+
+The read behind suno.com's song page. Unlike `/api/feed/?ids=` (3.8), which only returns
+the signed-in account's own clips, this answers for any clip.
+
+**Request:** no body, no query.
+
+**Response:** a single `Clip` (not an array), with `media_urls`, `handle`,
+`display_name`, `is_liked` and the rest of the public fields. Signed in, the answer also
+carries `is_download_unlocked`.
+
+**Needs no session.** Measured:
+
+| Caller | Clip | Answer |
+| --- | --- | --- |
+| anonymous | another creator's public clip | 200, full clip |
+| anonymous | the account's own **private** clip | 200, full clip |
+| with the session | either | 200, plus `is_download_unlocked` |
+| anonymous | id that does not exist | 404 `{"detail": "Not found."}` |
+
+So, like `/api/mango/rights` (3.16), the clip id is enough. Client: `getClip()` sends the
+session when one is stored and goes anonymous otherwise; `Suno.info()` falls back to it
+when feed-by-ids has nothing, which is what lets `playTrack(id)` work signed out.
+
+No trailing slash. Id-addressed 404.
+
+---
+
+### 3.18 `POST /api/gen/{clip_id}/update_reaction_type/`: like and unlike
+
+`LIVE 2026-10-23`
+
+**Request:**
+
+```ts
+interface UpdateReactionRequest {
+  reaction: "LIKE" | null;   // null removes the reaction; send it, do not omit it
+}
+```
+
+**Response:**
+
+```ts
+interface ClipReaction {
+  clip: string;              // the clip id
+  reaction_type?: string;    // "L" for a like; the key is ABSENT when there is none
+  play_count: number;
+  skip_count: number;
+  flagged: boolean;
+  updated_at: string;
+}
+```
+
+Verified both ways through the liked feed (3.7): the clip appears after a like and
+disappears after an unlike. Other reaction values (a dislike, presumably) were not tried.
+Trailing slash. Needs a session.
+
+---
+
+### 3.19 `GET /api/profiles/{handle}`: public profile
+
+`LIVE 2026-10-23`
+
+**Request:** no body. Query, all three **required**:
+
+```
+?page=<n>&playlists_sort_by=upvote_count&clips_sort_by=created_at
+```
+
+Leaving out `playlists_sort_by` answers 422. `page` starts at 1.
+
+**Response:**
+
+```ts
+interface ProfilePage {
+  user_id: string;
+  display_name: string;
+  handle: string;
+  profile_description: string;
+  avatar_image_url: string;
+  clips: Clip[];               // this page of the creator's public clips
+  stats: {
+    upvote_count__sum: number;
+    play_count__sum: number;
+    followers_count: number;
+    following_count: number;
+  };
+  is_flagged: boolean;
+  is_verified: boolean;
+  is_following: boolean;       // about the viewer; false when anonymous
+  num_total_clips: number;
+  current_page: number;
+  playlists: Playlist[];
+  favorite_songs: unknown[];
+  personas: unknown[];
+  // + viewer_is_blocking_profile, is_following_viewer, and more
+}
+```
+
+**Paging.** Page 1 holds the pinned clips **plus** 20; later pages hold 20. Pinned clips
+also appear again in the regular order, so a running count never matches
+`num_total_clips`. To walk every clip, deduplicate by id and stop on an empty page or a
+short one.
+
+**Needs no session.** With one, `is_following` says whether this account follows the
+profile. An unknown handle is 404 `{"detail": "Not found."}`.
+
+---
+
+### 3.20 `GET /api/profiles/{handle}/following` and `/followers`
+
+`LIVE 2026-10-23`
+
+**Request:** no body. Query: `?page=<n>`, from 1. **Needs a session**: anonymous, both
+answer 401.
+
+**Response:**
+
+```ts
+interface FollowPage {
+  user_id: string;
+  handle: string;
+  profiles: SimpleProfile[];
+  current_page: number;
+  num_total_profiles: number;
+}
+interface SimpleProfile {
+  user_id: number;              // -1 on every entry measured; NOT the account id
+  entity_type: "simple_profile_schema";
+  external_user_id: string;     // the account id
+  display_name: string;
+  handle: string;
+  avatar_image_url: string;
+  is_following: boolean;
+  is_following_viewer: boolean;
+  is_verified: boolean;
+  stats: { followers_count: number; likes_count: number; clips_count: number; last_login: string };
+}
+```
+
+20 profiles to a page. Stop on an empty page or a short one.
+
+---
+
+### 3.21 `POST /api/profiles/follow`: follow and unfollow
+
+`LIVE 2026-10-23`
+
+**Request:** the handle rides in the body, not the path.
+
+```ts
+interface FollowRequest { handle: string; unfollow: boolean }
+```
+
+`unfollow: false` follows, `true` stops following.
+
+**Response:** empty. Verified through `is_following` on the profile (3.19). No trailing
+slash. Needs a session.
+
+---
+
+### 3.22 `GET /api/playlist/{playlist_id}?page=<n>`: read a playlist
+
+`LIVE 2026-10-13` (read anonymously), `LIVE 2026-10-23` (read with the session)
+
+The GET suno.com makes when anyone opens a share link. Clips live under
+`playlist_clips[].clip`, each next to the playlist's own position for it:
+
+```ts
+interface PlaylistPage {
+  id: string;
+  name: string;
+  description: string;
+  user_display_name: string;
+  user_handle: string;
+  total_duration: number;
+  num_total_results: number;
+  is_public: boolean;
+  is_owned: boolean;
+  playlist_clips: Array<{
+    clip: Clip;
+    relative_index: number;   // the playlist order; can be fractional
+    created_at: string;
+  }>;
+}
+```
+
+Paging is `?page=N`; keep going until a page adds nothing new or `num_total_results` is
+reached. `relative_index` is what a removal needs (3.24).
+
+Anonymous and signed-in reads of a public playlist returned the same clips and indexes. Whether an anonymous
+read sees a **private** playlist is not verified, and a new playlist starts private, so
+the client reads its own with the session (`getPlaylist(..., { signedIn: true })`).
+
+---
+
+### 3.23 `GET /api/playlist/me`: the account's own playlists
+
+`LIVE 2026-10-23`
+
+**Request:** no body. Query: `?page=1&show_trashed=false&show_sharelist=false`. Needs a
+session.
+
+**Response:**
+
+```ts
+interface MyPlaylists {
+  num_total_results: number;
+  current_page: number;
+  playlists: Array<{
+    id: string;
+    entity_type: "playlist_schema";
+    name: string;
+    description: string;
+    image_url: string;
+    is_public: boolean;
+    is_owned: boolean;
+    is_trashed: boolean;
+    num_total_results: number;   // clips in that playlist
+    song_count: number;
+    // + play_count, upvote_count, user_handle, and more
+  }>;
+}
+```
+
+A page past the end answers `playlists: []`.
+
+---
+
+### 3.24 Playlist writes
+
+`LIVE 2026-10-23`, except where marked
+
+All four need a session and take a **flat** body. Their 422s name `body.spec.*`, but as
+with `/api/gen/trash` (3.9) those are server parameter names, not an envelope. Every
+route has a trailing slash.
+
+**Create:** `POST /api/playlist/create/`
+
+```ts
+interface CreatePlaylistRequest { name: string }
+```
+
+Returns the new playlist (`entity_type: "playlist_schema"`, `id`, `name`,
+`playlist_clips: []`, `is_owned: true`, `is_public: false`). **The server validates
+nothing:** any body, `{}` included, creates a playlist called "Untitled". The client
+refuses an empty name before sending, and never retries a create.
+
+**Add clips:** `POST /api/playlist/update_clips/`
+
+```ts
+interface AddClipsRequest {
+  playlist_id: string;
+  update_type: "add";
+  metadata: { clip_ids: string[] };
+}
+```
+
+Answers 204. Never retried: a replay would add the clips twice.
+
+**Remove clips:** same route.
+
+```ts
+interface RemoveClipsRequest {
+  playlist_id: string;
+  update_type: "remove";
+  metadata: {
+    clip_ids: string[];
+    indexes: number[];   // REQUIRED: each clip's relative_index, from 3.22
+  };
+}
+```
+
+Answers 204. Without `indexes` it answers 400 `{"error_type": "remove_indexes_invalid",
+"detail": "Choose which songs to remove from the playlist."}`. Measured with one clip;
+the two arrays are sent pairwise for several.
+
+**Rename and describe:** `POST /api/playlist/set_metadata/`
+
+```ts
+interface SetPlaylistMetadataRequest { playlist_id: string; name: string; description: string }
+```
+
+All three required. Returns 200 with the updated playlist.
+
+**Trash:** `POST /api/playlist/trash/`
+
+```ts
+interface TrashPlaylistRequest { playlist_id: string; undo_trash: boolean }
+```
+
+`undo_trash: false` trashes, answers 204. `undo_trash: true` presumably restores:
+`INFERRED`, never exercised.
+
+---
+
+### 3.25 `POST /api/search`: search everyone's public songs
+
+`LIVE 2026-10-23`
+
+What suno.com's search box sends. Not the library search of 3.7, which filters the
+signed-in account's own clips through `searchText`. Needs a session.
+
+**Request:**
+
+```ts
+interface SearchRequest {
+  search_queries: Array<{
+    name: "tag_song";
+    search_type: "tag_song";
+    term: string;
+    from_index: number;
+    size: number;
+    rank_by: "most_relevant" | "play_count" | "trending";
+    is_public: true;
+  }>;
+}
+```
+
+**Response:** keyed by the query's `name`.
+
+```ts
+interface SearchResponse {
+  result: {
+    tag_song: {
+      total_hits: number;
+      result: Clip[];
+      from_index: number;
+      page_size: number;
+      tuned_count: number;
+    };
+  };
+}
+```
+
+**Limits measured.** `size` up to 1000 works and returns about 780 to 790 songs, fewer than
+asked: some are filtered out after the count. `from_index` beyond roughly 200 returns an
+empty result, so the index serves a window and deep paging does not work, whatever
+`total_hits` says. No trailing slash.
+
+---
+
 ## 4. Clip lifecycle
 
 ### 4.1 Status values
@@ -1166,7 +1520,7 @@ all the 422-shaped lessons live in request construction, not status handling.
 
 A 404 means different things on different paths. Classification uses the **response**
 URL's pathname (post-redirect, query string stripped), compared by **exact string
-equality** against this 7-entry list:
+equality** against this 14-entry list:
 
 ```ts
 const ROUTE_LEVEL_404 = [
@@ -1177,6 +1531,13 @@ const ROUTE_LEVEL_404 = [
   "/api/generate/lyrics/",     // trailing slash; the SUBMIT route only
   "/api/feed/v3",              // no trailing slash
   "/api/gen/trash",            // no trailing slash
+  "/api/search",               // no trailing slash
+  "/api/profiles/follow",      // no trailing slash
+  "/api/playlist/me",          // no trailing slash
+  "/api/playlist/create/",     // trailing slash
+  "/api/playlist/update_clips/",
+  "/api/playlist/set_metadata/",
+  "/api/playlist/trash/",
 ];
 ```
 
@@ -1187,7 +1548,12 @@ Membership is exact, not prefix. `/api/generate/lyrics/` is in the set but
 would misclassify every lyrics-poll 404. `/api/feed/` (the `?ids=` poll) is deliberately
 **absent** because its ids ride in the query string, while `/api/gen/trash` is
 deliberately **present** because its ids ride in the body, so a 404 there can only mean
-the route moved. It has moved before: `/api/feed/trash` became `/api/gen/trash`.
+the route moved. It has moved before: `/api/feed/trash` became `/api/gen/trash`. The
+playlist writes, follow and search are present for the same reason.
+
+The path only says which 404s are worth asking about. The body decides: an unknown id in
+a body is answered by the application in JSON (`{"detail": "Not found."}`) and stays
+`not_found`; only a non-JSON 404, the web server's own page, reads as the route moving.
 
 ### 5.4 Schema-drift detection
 
@@ -1415,7 +1781,7 @@ returns `true`; this exact bug shipped once and reported success with nothing ge
 | --- | --- |
 | The Clerk session id is found in the JWT `sid` claim | The source only ever reads `exp` from the JWT and gets the session id from `GET /v1/client`. The doc's version also cannot bootstrap: you need a session id to get a JWT. |
 | The create body has ~11 keys and a 3-key `metadata` | 22 keys and an 8-key `metadata`. Copying the doc's example omits `transaction_uuid`, `override_fields`, `user_uploaded_images_b64`, the `cover_*`/`artist_*`/`persona_id` placeholders, and `is_max_mode`/`is_mumble`/`user_tier`/`disable_volume_normalization`. It will 422. |
-| `GET /api/playlist/me`, `GET /api/trending/` | Do not exist anywhere in the source. |
+| `GET /api/playlist/me`, `GET /api/trending/` | Neither is in the reference source. `/api/playlist/me` does exist, though: see 3.23 (`LIVE 2026-10-23`). `/api/trending/` was not tried. |
 | `POST /api/cover/`, `POST /api/remaster/` as separate endpoints | Both go through `/api/generate/v2-web/`. |
 | `POST /api/generate/stems/` | Wrong path; the real one is `POST /api/edit/stems/{id}`. |
 | feed/v3 `filters` documented loosely | Omits the camelCase renames `searchText`/`fullSong` and the string-valued `trashed: "False"`. |

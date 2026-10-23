@@ -309,3 +309,34 @@ describe('getClips', () => {
     expect(calls).toHaveLength(0);
   });
 });
+
+describe('liked clips', () => {
+  it('adds the liked filter as capitalised strings, trash excluded', async () => {
+    // `{ liked: { presence: "True" } }`, the shape `stem` takes, is accepted
+    // and ignored: it returns the whole library.
+    const { client, calls } = pages([{ clips: [clip('a')], next_cursor: null }]);
+
+    await listClips(client, { liked: true });
+
+    expect(postBody(calls, 0)).toEqual({ limit: 20, filters: { liked: 'True', trashed: 'False' } });
+  });
+
+  it('leaves the plain listing body untouched when liked is false', async () => {
+    const { client, calls } = pages([{ clips: [], next_cursor: null }]);
+
+    await listClips(client, { liked: false });
+
+    expect(Object.keys(postBody(calls, 0))).toEqual(['limit']);
+  });
+
+  it('keeps the filter on every page while it walks the cursor', async () => {
+    const { client, calls } = pages([
+      { clips: [clip('a')], next_cursor: 'c2', has_more: true },
+      { clips: [clip('b')], next_cursor: null, has_more: false },
+    ]);
+
+    expect(await collectIds(iterateClips(client, { liked: true }))).toEqual(['a', 'b']);
+    expect(postBody(calls, 0)['filters']).toEqual({ liked: 'True', trashed: 'False' });
+    expect(postBody(calls, 1)).toEqual({ limit: 20, cursor: 'c2', filters: { liked: 'True', trashed: 'False' } });
+  });
+});

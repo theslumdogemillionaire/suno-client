@@ -53,6 +53,12 @@ export const CONSUMED_PATHS: Record<string, readonly string[]> = {
     'playlist_clips[].clip.media_urls[].url',
   ],
   'mango.rights': ['key', 'iv', 'glt'],
+  'clip.get': ['id', 'status', 'title', 'created_at', 'model_name', 'media_urls[].url'],
+  'profile.get': ['handle', 'clips[].id'],
+  'profile.following': ['profiles[].handle'],
+  'profile.followers': ['profiles[].handle'],
+  'playlist.mine': ['playlists[].id', 'num_total_results'],
+  'search.public': ['result.tag_song.result[].id', 'result.tag_song.total_hits'],
 };
 
 /**

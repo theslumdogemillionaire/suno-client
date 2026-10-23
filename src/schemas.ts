@@ -153,6 +153,27 @@ export type FeedPage = z.infer<typeof FeedPageSchema>;
 
 export const ClipsArraySchema = z.array(ClipSchema);
 
+/**
+ * The account's standing with one clip, as `update_reaction_type` returns it.
+ *
+ * `reaction_type` is `"L"` for a like and the key is absent when there is no
+ * reaction: absence, not `null`, is what an unlike returns. Nothing is
+ * required, because this arrives after the write has already happened and a
+ * renamed counter must not turn a successful like into an error.
+ */
+export const ClipReactionSchema = z
+  .object({
+    clip: z.string().nullish(),
+    reaction_type: z.string().nullish(),
+    play_count: z.number().nullish(),
+    skip_count: z.number().nullish(),
+    flagged: z.boolean().nullish(),
+    updated_at: z.string().nullish(),
+  })
+  .passthrough();
+
+export type ClipReaction = z.infer<typeof ClipReactionSchema>;
+
 export const MaxLengthsSchema = z
   .object({
     title: z.number().optional(),

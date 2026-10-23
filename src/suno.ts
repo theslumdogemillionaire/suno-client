@@ -20,7 +20,7 @@ import {
   type ExtendOptions,
   type RemasterOptions,
 } from './api/derive.js';
-import { getClips, iterateClips, listClips, searchClips, type ListOptions } from './api/feed.js';
+import { getClip, getClips, iterateClips, listClips, searchClips, type ListOptions } from './api/feed.js';
 import {
   alignedLyrics,
   billingInfo,
@@ -29,6 +29,7 @@ import {
   getPersona,
   requestStems,
   setMetadata,
+  setReaction,
   setTrashed,
   setVisibility,
   toLrc,
@@ -48,14 +49,38 @@ import {
 } from './api/media.js';
 import { SunoClient, type SunoClientOptions } from './client.js';
 import { playTrack, type PlaybackStream } from './api/mango.js';
-import { getPlaylist, type Playlist } from './api/playlist.js';
+import {
+  addPlaylistClips,
+  createPlaylist,
+  extractPlaylistId,
+  getPlaylist,
+  iterateMyPlaylists,
+  removePlaylistClips,
+  setPlaylistMetadata,
+  setPlaylistTrashed,
+  type Playlist,
+  type PlaylistSummary,
+  type SetPlaylistMetadataOptions,
+} from './api/playlist.js';
+import {
+  getProfile,
+  iterateFollowers,
+  iterateFollowing,
+  iterateProfileClips,
+  setFollowing,
+  type ProfileOptions,
+  type ProfilePage,
+  type ProfileSummary,
+} from './api/profile.js';
+import { searchPublic, type PublicSearchOptions, type PublicSearchPage } from './api/search.js';
 import { artworkUrl, downloadClip, downloadClips, type DownloadOptions } from './download.js';
 import { SunoError } from './errors.js';
 import { GenerationJob } from './poll.js';
 import { untilAborted } from './internal/retry.js';
+import { hasSession } from './internal/session.js';
 import { registryFromBaselines } from './drift/registry.js';
 import type { AccountTier } from './api/account.js';
-import { isFetchableUrl, type AlignedWord, type BillingInfo, type CaptchaCheck, type Clip, type FeedPage, type LyricsResult, type Model, type PersonaInfo } from './schemas.js';
+import { isFetchableUrl, type AlignedWord, type BillingInfo, type CaptchaCheck, type Clip, type ClipReaction, type FeedPage, type LyricsResult, type Model, type PersonaInfo } from './schemas.js';
 
 export interface SunoOptions extends SunoClientOptions {
   /**
@@ -313,12 +338,23 @@ export class Suno {
     return listClips(this.client, options);
   }
 
-  iterate(options: { limit?: number; maxPages?: number; signal?: AbortSignal } = {}): AsyncGenerator<Clip, void, undefined> {
+  iterate(
+    options: { limit?: number; maxPages?: number; liked?: boolean; signal?: AbortSignal } = {},
+  ): AsyncGenerator<Clip, void, undefined> {
     return iterateClips(this.client, options);
   }
 
+  /** Search this account's own library. For everyone's songs, see `searchPublic`. */
   search(query: string, options: { limit?: number; signal?: AbortSignal } = {}): Promise<FeedPage> {
     return searchClips(this.client, query, options);
+  }
+
+  /**
+   * Search every public song on Suno, the way suno.com's search box does.
+   * Needs a session. Results stop about 200 deep, whatever `totalHits` says.
+   */
+  searchPublic(term: string, options: PublicSearchOptions = {}): Promise<PublicSearchPage> {
+    return searchPublic(this.client, term, options);
   }
 
   get(ids: readonly string[], signal?: AbortSignal): Promise<Clip[]> {
@@ -343,10 +379,27 @@ export class Suno {
     return playTrack(this.client, clip, signal ? { signal } : {});
   }
 
+  /**
+   * One clip by id, anyone's, signed in or not.
+   *
+   * The account's own clips are read from feed-by-ids, as before 0.6.0, so a
+   * clip still rendering reads the way the poller sees it. Anything that
+   * finds nothing there, and every id when no session is stored, falls back
+   * to the public `GET /api/clip/{id}`.
+   */
   async info(id: string, signal?: AbortSignal): Promise<Clip> {
-    const [clip] = await getClips(this.client, [id], signal);
-    if (!clip) throw new SunoError({ code: 'not_found', message: `no clip with id ${id}` });
-    return clip;
+    // Signed out there is no library to look in. A fired signal goes on to
+    // the feed call, which refuses it the usual way.
+    const signedIn = signal?.aborted === true || (await hasSession(this.client, signal));
+    const owned = signedIn
+      ? await getClips(this.client, [id], signal).catch((err: unknown) => {
+          // An id feed-by-ids does not know is for the public endpoint to
+          // answer, including with its own 404.
+          if (err instanceof SunoError && err.code === 'not_found') return [];
+          throw err;
+        })
+      : [];
+    return owned[0] ?? getClip(this.client, id, signal);
   }
 
   /** Rehydrate a job from ids, e.g. after a process restart. */
@@ -368,6 +421,48 @@ export class Suno {
 
   persona(personaId: string, signal?: AbortSignal): Promise<PersonaInfo> {
     return getPersona(this.client, personaId, signal);
+  }
+
+  // --- people --------------------------------------------------------------
+
+  /**
+   * One page of a public profile. No session needed; with one,
+   * `is_following` is about this account.
+   */
+  profile(handle: string, options: ProfileOptions = {}): Promise<ProfilePage> {
+    return getProfile(this.client, handle, options);
+  }
+
+  /** Every public clip on a profile, pinned ones included, each once. */
+  profileClips(
+    handle: string,
+    options: { clipsSortBy?: string; maxPages?: number; signal?: AbortSignal } = {},
+  ): AsyncGenerator<Clip, void, undefined> {
+    return iterateProfileClips(this.client, handle, options);
+  }
+
+  /** The profiles `handle` follows. Needs a session. */
+  following(
+    handle: string,
+    options: { maxPages?: number; signal?: AbortSignal } = {},
+  ): AsyncGenerator<ProfileSummary, void, undefined> {
+    return iterateFollowing(this.client, handle, options);
+  }
+
+  /** The profiles following `handle`. Needs a session. */
+  followers(
+    handle: string,
+    options: { maxPages?: number; signal?: AbortSignal } = {},
+  ): AsyncGenerator<ProfileSummary, void, undefined> {
+    return iterateFollowers(this.client, handle, options);
+  }
+
+  follow(handle: string, signal?: AbortSignal): Promise<void> {
+    return setFollowing(this.client, handle, true, signal);
+  }
+
+  unfollow(handle: string, signal?: AbortSignal): Promise<void> {
+    return setFollowing(this.client, handle, false, signal);
   }
 
   // --- media analysis ------------------------------------------------------
@@ -457,6 +552,66 @@ export class Suno {
 
   publish(clipId: string, isPublic: boolean, signal?: AbortSignal): Promise<void> {
     return setVisibility(this.client, clipId, isPublic, signal);
+  }
+
+  /** Like a clip. It then shows up in `list({ liked: true })`. */
+  like(clipId: string, signal?: AbortSignal): Promise<ClipReaction> {
+    return setReaction(this.client, clipId, 'LIKE', signal);
+  }
+
+  unlike(clipId: string, signal?: AbortSignal): Promise<ClipReaction> {
+    return setReaction(this.client, clipId, null, signal);
+  }
+
+  // --- playlists -----------------------------------------------------------
+
+  /** Every playlist this account owns, trashed ones left out. */
+  myPlaylists(options: { maxPages?: number; signal?: AbortSignal } = {}): AsyncGenerator<PlaylistSummary, void, undefined> {
+    return iterateMyPlaylists(this.client, options);
+  }
+
+  /** A new, empty, private playlist. */
+  createPlaylist(name: string, signal?: AbortSignal): Promise<PlaylistSummary> {
+    return createPlaylist(this.client, name, signal);
+  }
+
+  addToPlaylist(playlistIdOrUrl: string, clipIds: readonly string[], signal?: AbortSignal): Promise<void> {
+    return addPlaylistClips(this.client, playlistIdOrUrl, clipIds, signal);
+  }
+
+  /**
+   * Take clips out of a playlist by id.
+   *
+   * Suno removes by position too, so this reads the playlist first, with the
+   * session, to find where each clip sits. A clip that is not in it is
+   * `not_found`, and nothing is removed. A clip listed twice loses one entry.
+   */
+  async removeFromPlaylist(playlistIdOrUrl: string, clipIds: readonly string[], signal?: AbortSignal): Promise<void> {
+    const pid = extractPlaylistId(playlistIdOrUrl);
+    // Checked before the read, not after it: an empty list is a mistake
+    // whatever the playlist holds.
+    if (clipIds.length === 0) throw new SunoError({ code: 'invalid_input', message: 'name at least one clip' });
+    const playlist = await getPlaylist(this.client, pid, { signedIn: true, ...(signal ? { signal } : {}) });
+    const entries = clipIds.map((id) => {
+      const entry = playlist.entries.find((e) => e.clipId === id);
+      if (!entry) throw new SunoError({ code: 'not_found', message: `clip ${id} is not in playlist ${pid}` });
+      return entry;
+    });
+    return removePlaylistClips(this.client, pid, entries, signal);
+  }
+
+  /** Rename a playlist and set its description; the server wants both. */
+  updatePlaylist(playlistIdOrUrl: string, options: SetPlaylistMetadataOptions): Promise<PlaylistSummary> {
+    return setPlaylistMetadata(this.client, playlistIdOrUrl, options);
+  }
+
+  trashPlaylist(playlistIdOrUrl: string, signal?: AbortSignal): Promise<void> {
+    return setPlaylistTrashed(this.client, playlistIdOrUrl, true, signal);
+  }
+
+  /** Unverified: sends `undo_trash: true`, which has not been seen working. */
+  restorePlaylist(playlistIdOrUrl: string, signal?: AbortSignal): Promise<void> {
+    return setPlaylistTrashed(this.client, playlistIdOrUrl, false, signal);
   }
 
   // --- files ---------------------------------------------------------------

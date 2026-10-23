@@ -128,6 +128,13 @@ const ROUTE_LEVEL_PATHS = new Set([
   '/api/generate/lyrics/',
   '/api/feed/v3',
   '/api/gen/trash',
+  '/api/search',
+  '/api/profiles/follow',
+  '/api/playlist/me',
+  '/api/playlist/create/',
+  '/api/playlist/update_clips/',
+  '/api/playlist/set_metadata/',
+  '/api/playlist/trash/',
 ]);
 
 export function isRouteLevelPath(path: string): boolean {
