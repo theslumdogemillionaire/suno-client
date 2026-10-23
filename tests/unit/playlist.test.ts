@@ -186,6 +186,19 @@ describe('playlist entries', () => {
     expect(callAt(calls, 0).headers['authorization']).toMatch(/^Bearer /);
     expect(callAt(calls, 1).headers['authorization']).toBeUndefined();
   });
+
+  it('are read through the facade with options, or with a bare signal as before', async () => {
+    const { clientOptions, calls } = stubClientOptions(always({ body: { id: PID, name: 'Mine', num_total_results: 0, playlist_clips: [] } }));
+    const suno = new Suno(clientOptions);
+
+    await suno.playlist(PID, { signedIn: true });
+    await suno.playlist(PID, new AbortController().signal);
+    await suno.playlist(PID);
+
+    expect(callAt(calls, 0).headers['authorization']).toMatch(/^Bearer /);
+    expect(callAt(calls, 1).headers['authorization']).toBeUndefined();
+    expect(callAt(calls, 2).headers['authorization']).toBeUndefined();
+  });
 });
 
 function summary(id: string, extra: Record<string, unknown> = {}): Record<string, unknown> {

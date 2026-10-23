@@ -58,6 +58,7 @@ import {
   removePlaylistClips,
   setPlaylistMetadata,
   setPlaylistTrashed,
+  type GetPlaylistOptions,
   type Playlist,
   type PlaylistSummary,
   type SetPlaylistMetadataOptions,
@@ -362,17 +363,19 @@ export class Suno {
   }
 
   /**
-   * Public playlist by share link or id. No session required: this is the GET
-   * suno.com makes for anyone who opens the link.
+   * Playlist by share link or id. Signed out by default: this is the GET
+   * suno.com makes for anyone who opens the link. Pass `{ signedIn: true }` to
+   * read one of the account's own playlists, which start out private. A bare
+   * `AbortSignal` is still accepted in place of the options.
    */
-  playlist(idOrUrl: string, signal?: AbortSignal): Promise<Playlist> {
-    return getPlaylist(this.client, idOrUrl, signal ? { signal } : {});
+  playlist(idOrUrl: string, options: GetPlaylistOptions | AbortSignal = {}): Promise<Playlist> {
+    return getPlaylist(this.client, idOrUrl, options instanceof AbortSignal ? { signal: options } : options);
   }
 
   /**
    * Decrypted audio stream, obtained the way suno.com's player gets it, with
-   * no download credit spent. An id is looked up first, which needs a session;
-   * pass a `Clip` (from `playlist()`, say) to play signed out.
+   * no download credit spent. An id is looked up first through `info()`, which
+   * works signed out for any public clip; pass a `Clip` to skip that request.
    */
   async playTrack(idOrClip: string | Clip, signal?: AbortSignal): Promise<PlaybackStream> {
     const clip = typeof idOrClip === 'string' ? await this.info(idOrClip, signal) : idOrClip;
