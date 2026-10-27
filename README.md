@@ -392,6 +392,15 @@ const hints = await suno.suggest('lofi');            // what the search box sugg
 Comments and remix sources read without a session; the rest needs one. Suno keeps
 the last 100 listens.
 
+```ts
+const posted = await suno.comment(clipId, 'great hook', { trackTimestamp: 42 });
+await suno.reactToComment(posted.id, 'LIKE');      // null takes it back
+await suno.deleteComment(posted.id);
+
+await suno.updateProfile({ displayName: 'New name', bio: 'hello' });   // only these change
+await suno.setAvatar(await readFile('me.png'), 'png');
+```
+
 ## Looking like a browser
 
 Measured, not assumed. The web app's own code sets four headers on a studio-api

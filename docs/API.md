@@ -1490,6 +1490,46 @@ All `LIVE 2026-10-27`, all needing a session.
   Clip[], current_page, total_pages, total_count }`, the songs others made from this
   creator's songs.
 
+
+### 3.34 Comment writes
+
+`LIVE 2026-10-27`. Need a session.
+
+- `POST /api/gen/{clip_id}/comment` with `{ content, parent_id: string | null,
+  user_mentions: [], track_timestamp: number | null }` answers the comment as listed
+  in 3.31 (no replies). `parent_id` makes it a reply. A second comment within about
+  two minutes answered 429 `{"detail": "Too many requests.", "error_type":
+  "rate_limit"}`.
+- `DELETE /api/comment/{comment_id}` answers `{ id, status: "deleted" }`.
+- `POST /api/comment/{comment_id}/reaction` with `{ entity_type: "clip", reaction }`.
+  `reaction` is `"LIKE"` or `"DISLIKE"` (anything else is 422 `literal_error`), or
+  `null` to take it back. Answers `{ id, num_likes, reaction_type? }`. A listed comment
+  then carries the viewer's `reaction_type`.
+
+### 3.35 Profile editing and image upload
+
+`LIVE 2026-10-27`. Need a session.
+
+- `GET /api/profiles/v2/{handle}`: `{ user_id, metadata: { handle, display_name,
+  avatar_image_url, cover_photo_url, is_verified }, bio: { profile_description,
+  user_inputted_genres }, social_links: {}, relationship, stats, feed }`.
+- `PATCH /api/profiles/v2/{handle}` with any of `metadata: { display_name, handle,
+  avatar_upload_id?, avatar_is_ai_generated? }`, `bio: { profile_description?,
+  user_inputted_genres?, section_order? }`, `social_links: { spotify_link,
+  soundcloud_link, x_link, instagram_link, youtube_link, tiktok_link }`. **Partial**:
+  sending only `metadata` left the bio intact. `metadata` needs `display_name` and
+  `handle`. Answers `{ success, updated_fields: string[], errors: {} }`.
+- Image upload, three steps:
+  1. `POST /api/uploads/image` with `{ extension: "jpeg" }` answers `{ id, url, fields:
+     { "Content-Type", key, AWSAccessKeyId, policy, signature }, is_file_uploaded }`.
+  2. A multipart `POST` to `url` (Suno's storage, not studio-api) with every field of
+     `fields` then the file under `file`. Answers 204.
+  3. `POST /api/uploads/image/{id}/upload-finish` answers `{ upload_id,
+     moderation_status: "approved" }`.
+
+  The avatar is then set by `metadata.avatar_upload_id = upload_id`. The new avatar
+  gets a new URL, `image_<upload_id>.jpeg`.
+
 ---
 
 ## 4. Clip lifecycle

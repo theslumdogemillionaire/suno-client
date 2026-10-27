@@ -1,8 +1,8 @@
 /**
  * The comments under a song, read the way its page shows them.
  *
- * Public: measured on 2026-10-27, anonymous reads answer the same pages. With a
- * session, it is sent. Writing comments is not covered.
+ * Reads are public: measured on 2026-10-27, anonymous reads answer the same
+ * pages. With a session, it is sent. Posting, deleting and reacting need one.
  */
 import { z } from 'zod';
 
@@ -43,6 +43,8 @@ export const CommentSchema = z
     reply_continuation_token: z.string().nullish(),
     /** Seconds into the song the comment points at, when it does. */
     track_timestamp: z.number().nullish(),
+    /** This account's reaction, `LIKE` or `DISLIKE`, when it has one. */
+    reaction_type: z.string().nullish(),
   })
   .passthrough();
 
@@ -120,4 +122,81 @@ export function iterateComments(
     keyOf: (comment) => comment.id,
     ...(options.maxPages !== undefined ? { maxPages: options.maxPages } : {}),
   });
+}
+
+export const CommentResponseSchema = z.object({ ...CommentFields, clip_id: z.string().nullish() }).passthrough();
+
+export interface PostCommentOptions {
+  /** Answer this comment instead of posting at the top level. */
+  replyTo?: string;
+  /** Point the comment at this second of the song. */
+  trackTimestamp?: number;
+  signal?: AbortSignal;
+}
+
+/**
+ * Post a comment under a song, public at once. Measured 2026-10-27; the answer
+ * is the comment as it will be listed. Never retried: a replay after a slow
+ * success would post it twice.
+ */
+export async function postComment(
+  client: SunoClient,
+  clipId: string,
+  content: string,
+  options: PostCommentOptions = {},
+): Promise<CommentReply> {
+  if (content.trim() === '') throw new SunoError({ code: 'invalid_input', message: 'a comment cannot be empty' });
+  if (clipId.trim() === '') throw new SunoError({ code: 'invalid_input', message: 'a clip id cannot be empty' });
+  return client.request({
+    method: 'POST',
+    path: `/api/gen/${pathSegment(clipId.trim())}/comment`,
+    body: {
+      content,
+      parent_id: options.replyTo ?? null,
+      user_mentions: [],
+      track_timestamp: options.trackTimestamp ?? null,
+    },
+    schema: CommentResponseSchema,
+    endpointKey: 'clip.comment.post',
+    retry: { maxRetries: 0 },
+    ...(options.signal ? { signal: options.signal } : {}),
+  });
+}
+
+/** Delete one of the account's own comments. */
+export async function deleteComment(client: SunoClient, commentId: string, signal?: AbortSignal): Promise<void> {
+  await client.request({
+    method: 'DELETE',
+    path: `/api/comment/${pathSegment(commentId)}`,
+    endpointKey: 'clip.comment.delete',
+    ...(signal ? { signal } : {}),
+  });
+}
+
+/** `null` takes the reaction back. The server accepts nothing else. */
+export type CommentReaction = 'LIKE' | 'DISLIKE' | null;
+
+/**
+ * Like or dislike a comment, or take it back with `null`. Sets a state, so a
+ * replay is harmless. Returns the comment's like count after the change.
+ */
+export async function setCommentReaction(
+  client: SunoClient,
+  commentId: string,
+  reaction: CommentReaction,
+  signal?: AbortSignal,
+): Promise<{ likes: number | undefined; reaction: CommentReaction }> {
+  if (reaction !== null && reaction !== 'LIKE' && reaction !== 'DISLIKE') {
+    throw new SunoError({ code: 'invalid_input', message: `reaction must be LIKE, DISLIKE or null, got ${JSON.stringify(reaction)}` });
+  }
+  const data = await client.request({
+    method: 'POST',
+    path: `/api/comment/${pathSegment(commentId)}/reaction`,
+    body: { entity_type: 'clip', reaction },
+    schema: z.object({ num_likes: z.number().nullish(), reaction_type: z.string().nullish() }).passthrough(),
+    endpointKey: 'clip.comment.reaction',
+    ...(signal ? { signal } : {}),
+  });
+  const back = data.reaction_type === 'LIKE' || data.reaction_type === 'DISLIKE' ? data.reaction_type : null;
+  return { likes: data.num_likes ?? undefined, reaction: back };
 }

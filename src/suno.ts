@@ -92,7 +92,30 @@ import {
   type RemixCount,
   type RemixSource,
 } from './api/related.js';
-import { iterateComments, listComments, type Comment, type CommentOrder, type CommentsOptions, type CommentsPage } from './api/comments.js';
+import {
+  deleteComment,
+  iterateComments,
+  listComments,
+  postComment,
+  setCommentReaction,
+  type Comment,
+  type CommentOrder,
+  type CommentReaction,
+  type CommentReply,
+  type CommentsOptions,
+  type CommentsPage,
+  type PostCommentOptions,
+} from './api/comments.js';
+import {
+  getEditableProfile,
+  setAvatar,
+  updateProfile,
+  type EditableProfile,
+  type ImageExtension,
+  type ProfileChanges,
+  type UploadedImage,
+} from './api/profile-edit.js';
+import { decodeJwtClaims } from './auth.js';
 import { getPlaybarState, iterateListenHistory, type Listen, type PlaybarState } from './api/listening.js';
 import { listNotifications, unreadNotificationCount, type Notification } from './api/notifications.js';
 import { artworkUrl, downloadClip, downloadClips, type DownloadOptions } from './download.js';
@@ -429,6 +452,52 @@ export class Suno {
     options: { order?: CommentOrder; maxPages?: number; signal?: AbortSignal } = {},
   ): AsyncGenerator<Comment, void, undefined> {
     return iterateComments(this.client, clipId, options);
+  }
+
+  /** Post a comment under a song, public at once. Never retried. */
+  comment(clipId: string, content: string, options: PostCommentOptions = {}): Promise<CommentReply> {
+    return postComment(this.client, clipId, content, options);
+  }
+
+  /** Delete one of this account's comments. */
+  deleteComment(commentId: string, signal?: AbortSignal): Promise<void> {
+    return deleteComment(this.client, commentId, signal);
+  }
+
+  /** `LIKE`, `DISLIKE`, or `null` to take it back. */
+  reactToComment(
+    commentId: string,
+    reaction: CommentReaction,
+    signal?: AbortSignal,
+  ): Promise<{ likes: number | undefined; reaction: CommentReaction }> {
+    return setCommentReaction(this.client, commentId, reaction, signal);
+  }
+
+  // --- this account's profile ----------------------------------------------
+
+  /** The handle of the signed-in account, read from its session. */
+  async handle(signal?: AbortSignal): Promise<string> {
+    const { jwt } = await this.client.ensureAuth(signal);
+    const handle = jwt ? decodeJwtClaims(jwt)?.['suno/handle'] : undefined;
+    if (typeof handle !== 'string' || handle === '') {
+      throw new SunoError({ code: 'response_invalid', message: 'the session names no handle' });
+    }
+    return handle;
+  }
+
+  /** This account's profile as it edits it: name, avatar, bio, genres, links. */
+  async myProfile(signal?: AbortSignal): Promise<EditableProfile> {
+    return getEditableProfile(this.client, await this.handle(signal), signal);
+  }
+
+  /** Change this account's name, bio, genres or links. Only what is given changes. */
+  async updateProfile(changes: ProfileChanges, signal?: AbortSignal): Promise<string[]> {
+    return updateProfile(this.client, await this.handle(signal), changes, signal);
+  }
+
+  /** Upload an image and make it this account's avatar. */
+  async setAvatar(bytes: Uint8Array, extension: ImageExtension, signal?: AbortSignal): Promise<UploadedImage> {
+    return setAvatar(this.client, await this.handle(signal), bytes, extension, signal);
   }
 
   // --- this account's listening -------------------------------------------

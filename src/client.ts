@@ -78,7 +78,7 @@ export interface RequestInfo {
 }
 
 export interface RequestOptions<T> {
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
   query?: Record<string, string | number | boolean | undefined>;
   body?: unknown;

@@ -2,9 +2,10 @@
 
 ## 0.7.0 (2026-10-27)
 
-What sits around a song on suno.com, and the account's own listening. Read only:
-every route below was exercised live on 2026-10-27, signed in and signed out. Wire
-details are in `docs/API.md` §3.26 to §3.33.
+What sits around a song on suno.com, the account's own listening, comments and
+profile editing. Every route below was exercised live on 2026-10-27, signed in and
+signed out; the writes by posting and deleting a test comment and by writing back
+the profile's own values. Wire details are in `docs/API.md` §3.26 to §3.35.
 
 ### Added
 
@@ -22,6 +23,21 @@ details are in `docs/API.md` §3.26 to §3.33.
   `iterateComments()`). No session needed. `order` is `newest`, `oldest` or
   `most_liked` (the default, as on the song page); anything else is refused before
   sending, as the server would answer 422. Each comment carries its first replies.
+- **Writing comments.** `suno.comment(id, text, { replyTo, trackTimestamp })`
+  (`postComment()`) posts at once, publicly, and is never retried.
+  `suno.deleteComment(commentId)` (`deleteComment()`) removes one of the account's
+  own. `suno.reactToComment(commentId, 'LIKE' | 'DISLIKE' | null)`
+  (`setCommentReaction()`): `null` takes the reaction back, any other value is a 422.
+  Suno answers 429 to a second comment posted within about two minutes.
+- **Editing the profile.** `suno.myProfile()` (`getEditableProfile()`),
+  `suno.updateProfile({ displayName, bio, genres, links })` (`updateProfile()`) and
+  `suno.setAvatar(bytes, 'jpeg' | 'png' | 'webp')` (`uploadImage()`, `setAvatar()`).
+  The PATCH is partial: only the fields sent change. A name or avatar change carries
+  the handle and current name, as the server requires. The avatar goes up in three
+  steps (a slot, a signed form straight to Suno's storage, a confirmation that
+  answers with the moderation status) and is not set unless `approved`. The handle
+  itself is not offered. `suno.handle()` reads the signed-in account's handle from
+  its session.
 - **Listen history.** `suno.listenHistory()` (`listListenHistory()`,
   `iterateListenHistory()`) yields `{ clip, listenedAt }`, newest first. Suno keeps
   the last 100 listens.

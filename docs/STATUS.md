@@ -89,6 +89,8 @@ consumed paths for that endpoint precisely because it is not universal.
 | Remix sources, comments | `suno.remixSources()`, `suno.comments()` | No session needed |
 | Listen history, player state | `suno.listenHistory()`, `suno.playbarState()` | The last 100 listens |
 | Notifications | `suno.notifications()`, `suno.unreadNotifications()` | Read only |
+| Post, delete, react to comments | `suno.comment()`, `suno.deleteComment()`, `suno.reactToComment()` | One comment per ~2 min |
+| Edit profile, avatar | `suno.updateProfile()`, `suno.setAvatar()` | Partial update; handle not offered |
 
 A generation measured end to end on 2026-08-17: submitted, `queued` at 4s,
 `streaming` at 22s, both clips `complete` at 145s, two MP3s on disk at ~185 kbps
@@ -274,8 +276,9 @@ the account's own playlists with the session wherever it needs their contents.
 
 ## Around a song, and the account's listening (measured 2026-10-27)
 
-All reads, all exercised live on 2026-10-27, signed in and signed out. Wire details
-are in [API.md](API.md) §3.26 to §3.33.
+Exercised live on 2026-10-27, signed in and signed out. Wire details are in
+[API.md](API.md) §3.26 to §3.35. The writes were checked by posting and deleting a
+test comment on the account's own song, and by writing back the profile's own values.
 
 Only two of them answer anonymously: a song's comments and the sources of a remix.
 Similar songs, remixes, the parent, suggestions, history, player state and
@@ -290,6 +293,12 @@ that as no parent.
 
 **The listen history is the last 100.** Larger limits change nothing and
 `has_more` is then false.
+
+**Comments are rate limited hard.** A second comment about a minute after the first
+answered 429. `postComment()` never retries, so the caller sees it.
+
+**The profile PATCH is partial.** Sending a name alone left the bio and genres as
+they were, which is what lets `updateProfile()` send only what changes.
 
 ## The captcha gate does block creates (measured 2026-08-18)
 

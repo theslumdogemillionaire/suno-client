@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { iterateComments, listComments } from '../../src/api/comments.js';
+import { deleteComment, iterateComments, listComments, postComment, setCommentReaction } from '../../src/api/comments.js';
 import { always, callAt, collect, failure, inOrder, stubClient } from './support/harness.js';
 
 const ID = '00000000-0000-0000-0000-000000000001';
@@ -68,5 +68,43 @@ describe('iterateComments', () => {
     );
     expect((await collect(iterateComments(client, ID, { order: 'oldest' }))).map((c) => c.id)).toEqual(['a', 'b', 'c']);
     expect(Object.fromEntries(callAt(calls, 1).url.searchParams)).toEqual({ order: 'oldest', cursor: 'c1' });
+  });
+});
+
+describe('comment writes', () => {
+  it('posts with the body suno.com sends, and never retries', async () => {
+    const { client, calls } = stubClient(always({ status: 503 }), { maxRetries: 3 });
+    await failure(postComment(client, ID, 'nice', { replyTo: 'c1', trackTimestamp: 42 }));
+    expect(calls).toHaveLength(1);
+    expect(callAt(calls, 0).url.pathname).toBe(`/api/gen/${ID}/comment`);
+    expect(callAt(calls, 0).body).toEqual({ content: 'nice', parent_id: 'c1', user_mentions: [], track_timestamp: 42 });
+  });
+
+  it('returns the posted comment', async () => {
+    const { client, calls } = stubClient(always({ body: comment('new', { content: 'hi', num_likes: 0 }) }));
+    expect((await postComment(client, ID, 'hi')).id).toBe('new');
+    expect(callAt(calls, 0).body).toMatchObject({ parent_id: null, track_timestamp: null });
+  });
+
+  it('refuses an empty comment', async () => {
+    const { client, calls } = stubClient(always({ body: {} }));
+    expect((await failure(postComment(client, ID, '   '))).code).toBe('invalid_input');
+    expect(calls).toHaveLength(0);
+  });
+
+  it('deletes by comment id', async () => {
+    const { client, calls } = stubClient(always({ body: { id: 'c', status: 'deleted' } }));
+    await deleteComment(client, 'c');
+    expect(callAt(calls, 0).method).toBe('DELETE');
+    expect(callAt(calls, 0).url.pathname).toBe('/api/comment/c');
+  });
+
+  it('likes, and takes it back with null', async () => {
+    const { client, calls } = stubClient(
+      inOrder([{ body: { id: 'c', num_likes: 1, reaction_type: 'LIKE' } }, { body: { id: 'c', num_likes: 0 } }]),
+    );
+    expect(await setCommentReaction(client, 'c', 'LIKE')).toEqual({ likes: 1, reaction: 'LIKE' });
+    expect(await setCommentReaction(client, 'c', null)).toEqual({ likes: 0, reaction: null });
+    expect(callAt(calls, 1).body).toEqual({ entity_type: 'clip', reaction: null });
   });
 });

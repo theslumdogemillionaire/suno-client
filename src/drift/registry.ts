@@ -71,6 +71,12 @@ export const CONSUMED_PATHS: Record<string, readonly string[]> = {
   'notifications.list': ['notifications[].id', 'notifications[].text[].text'],
   'notifications.badge': ['badge_count'],
   'profile.remixesInspired': ['clips[].id', 'total_count'],
+  'clip.comment.post': ['id', 'content'],
+  'clip.comment.reaction': ['num_likes'],
+  'profile.v2': ['metadata.handle', 'metadata.display_name', 'metadata.avatar_image_url'],
+  'profile.update': ['updated_fields', 'errors'],
+  'upload.image': ['id', 'url', 'fields'],
+  'upload.imageFinish': ['upload_id', 'moderation_status'],
 };
 
 /**
