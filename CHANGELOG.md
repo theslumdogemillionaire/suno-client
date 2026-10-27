@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.7.0 (2026-10-27)
+
+What sits around a song on suno.com, and the account's own listening. Read only:
+every route below was exercised live on 2026-10-27, signed in and signed out. Wire
+details are in `docs/API.md` §3.26 to §3.33.
+
+### Added
+
+- **Similar songs.** `suno.similar(id)` (`similarClips()`) returns the ten songs
+  Suno shows as similar, over `GET /api/clips/get_similar?id=`. `limit` is ignored.
+- **Remixes.** `suno.remixes(id)` walks the public remixes of a clip by cursor
+  (`listRemixes()`, `iterateRemixes()`); `suno.remixCount(id)` reads the count the
+  song page shows. The walk returned 46 of a count of 55.
+- **Remix sources and parent.** `suno.remixSources(id)` (`remixSources()`) lists the
+  songs a remix was made from, and needs no session. `suno.parent(id)`
+  (`parentClip()`) returns the public clip this one derives from, or `undefined`:
+  without one Suno still answers 200, with the owner and no `id`.
+- **Comments.** `suno.comments(id, { order })` walks a song's top-level comments by
+  cursor, and `suno.commentsPage(id)` reads one page (`listComments()`,
+  `iterateComments()`). No session needed. `order` is `newest`, `oldest` or
+  `most_liked` (the default, as on the song page); anything else is refused before
+  sending, as the server would answer 422. Each comment carries its first replies.
+- **Listen history.** `suno.listenHistory()` (`listListenHistory()`,
+  `iterateListenHistory()`) yields `{ clip, listenedAt }`, newest first. Suno keeps
+  the last 100 listens.
+- **Player state.** `suno.playbarState()` (`getPlaybarState()`) reads where
+  suno.com's player stands for the account: queue, song index, second, device.
+- **Notifications.** `suno.notifications()` (`listNotifications()`, with
+  `notificationText()` to read one) and `suno.unreadNotifications()`
+  (`unreadNotificationCount()`).
+- **Search suggestions.** `suno.suggest(term)` (`searchSuggest()`) is what the search
+  box offers while typing, typed by kind: `style`, `profile`, `playlist`, `clip`, and
+  `other` for a kind not known yet.
+- **Remixes of a creator's songs.** `suno.remixesInspired(handle)`
+  (`listRemixesInspired()`, `iterateRemixesInspired()`).
+- **Drift.** Consumed paths are registered for every new read. No baselines ship
+  for them yet.
+
 ## 0.6.0 (2026-10-23)
 
 The social and library half of the web app: likes, follows, public profiles, the

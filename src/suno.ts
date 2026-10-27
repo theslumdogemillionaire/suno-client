@@ -68,12 +68,33 @@ import {
   iterateFollowers,
   iterateFollowing,
   iterateProfileClips,
+  iterateRemixesInspired,
   setFollowing,
   type ProfileOptions,
   type ProfilePage,
   type ProfileSummary,
 } from './api/profile.js';
-import { searchPublic, type PublicSearchOptions, type PublicSearchPage } from './api/search.js';
+import {
+  searchPublic,
+  searchSuggest,
+  type PublicSearchOptions,
+  type PublicSearchPage,
+  type SuggestOptions,
+  type Suggestion,
+} from './api/search.js';
+import {
+  iterateRemixes,
+  parentClip,
+  remixCount,
+  remixSources,
+  similarClips,
+  type ParentClip,
+  type RemixCount,
+  type RemixSource,
+} from './api/related.js';
+import { iterateComments, listComments, type Comment, type CommentOrder, type CommentsOptions, type CommentsPage } from './api/comments.js';
+import { getPlaybarState, iterateListenHistory, type Listen, type PlaybarState } from './api/listening.js';
+import { listNotifications, unreadNotificationCount, type Notification } from './api/notifications.js';
 import { artworkUrl, downloadClip, downloadClips, type DownloadOptions } from './download.js';
 import { SunoError } from './errors.js';
 import { GenerationJob } from './poll.js';
@@ -362,6 +383,74 @@ export class Suno {
     return getClips(this.client, ids, signal);
   }
 
+  /** What suno.com's search box offers while typing. Needs a session. */
+  suggest(term: string, options: SuggestOptions = {}): Promise<Suggestion[]> {
+    return searchSuggest(this.client, term, options);
+  }
+
+  // --- around a song -------------------------------------------------------
+
+  /** Ten songs Suno considers like this one. Needs a session. */
+  similar(clipId: string, signal?: AbortSignal): Promise<Clip[]> {
+    return similarClips(this.client, clipId, signal);
+  }
+
+  /** Every public remix of a clip, each once. Needs a session. */
+  remixes(
+    clipId: string,
+    options: { pageSize?: number; maxPages?: number; signal?: AbortSignal } = {},
+  ): AsyncGenerator<Clip, void, undefined> {
+    return iterateRemixes(this.client, clipId, options);
+  }
+
+  /** How many remixes a clip has. Needs a session. */
+  remixCount(clipId: string, signal?: AbortSignal): Promise<RemixCount> {
+    return remixCount(this.client, clipId, signal);
+  }
+
+  /** The songs a remix was made from; empty for an original. No session needed. */
+  remixSources(clipId: string, signal?: AbortSignal): Promise<RemixSource[]> {
+    return remixSources(this.client, clipId, signal);
+  }
+
+  /** The public clip this one was derived from, if any. Needs a session. */
+  parent(clipId: string, signal?: AbortSignal): Promise<ParentClip | undefined> {
+    return parentClip(this.client, clipId, signal);
+  }
+
+  /** One page of a song's comments. No session needed. */
+  commentsPage(clipId: string, options: CommentsOptions = {}): Promise<CommentsPage> {
+    return listComments(this.client, clipId, options);
+  }
+
+  /** Every top-level comment on a song, each once. No session needed. */
+  comments(
+    clipId: string,
+    options: { order?: CommentOrder; maxPages?: number; signal?: AbortSignal } = {},
+  ): AsyncGenerator<Comment, void, undefined> {
+    return iterateComments(this.client, clipId, options);
+  }
+
+  // --- this account's listening -------------------------------------------
+
+  /** The account's last 100 listens on Suno, newest first. */
+  listenHistory(options: { maxPages?: number; signal?: AbortSignal } = {}): AsyncGenerator<Listen, void, undefined> {
+    return iterateListenHistory(this.client, options);
+  }
+
+  /** Where suno.com's player stands: queue, song, second. Read only. */
+  playbarState(signal?: AbortSignal): Promise<PlaybarState> {
+    return getPlaybarState(this.client, signal);
+  }
+
+  notifications(signal?: AbortSignal): Promise<Notification[]> {
+    return listNotifications(this.client, signal);
+  }
+
+  unreadNotifications(signal?: AbortSignal): Promise<number> {
+    return unreadNotificationCount(this.client, signal);
+  }
+
   /**
    * Playlist by share link or id. Signed out by default: this is the GET
    * suno.com makes for anyone who opens the link. Pass `{ signedIn: true }` to
@@ -458,6 +547,14 @@ export class Suno {
     options: { maxPages?: number; signal?: AbortSignal } = {},
   ): AsyncGenerator<ProfileSummary, void, undefined> {
     return iterateFollowers(this.client, handle, options);
+  }
+
+  /** Songs others made from this creator's songs, each once. Needs a session. */
+  remixesInspired(
+    handle: string,
+    options: { pageSize?: number; maxPages?: number; signal?: AbortSignal } = {},
+  ): AsyncGenerator<Clip, void, undefined> {
+    return iterateRemixesInspired(this.client, handle, options);
   }
 
   follow(handle: string, signal?: AbortSignal): Promise<void> {

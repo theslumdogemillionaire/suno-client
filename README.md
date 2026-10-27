@@ -376,6 +376,22 @@ This is suno.com's search box: everyone's public songs. `suno.search()` is
 something else, a filter over your own library. Public search serves a window:
 `fromIndex` past about 200 returns nothing, whatever `totalHits` says.
 
+## Around a song, and your listening
+
+```ts
+const like = await suno.similar(clipId);             // ten similar songs
+for await (const remix of suno.remixes(clipId)) console.log(remix.title);
+const sources = await suno.remixSources(clipId);     // what a remix was made from
+for await (const c of suno.comments(clipId, { order: 'newest' })) console.log(c.content);
+
+for await (const { clip, listenedAt } of suno.listenHistory()) console.log(listenedAt, clip.title);
+const player = await suno.playbarState();            // queue and position on suno.com
+const hints = await suno.suggest('lofi');            // what the search box suggests
+```
+
+Comments and remix sources read without a session; the rest needs one. Suno keeps
+the last 100 listens.
+
 ## Looking like a browser
 
 Measured, not assumed. The web app's own code sets four headers on a studio-api

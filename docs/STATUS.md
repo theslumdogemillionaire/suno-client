@@ -84,6 +84,11 @@ consumed paths for that endpoint precisely because it is not universal.
 | Follow, unfollow, follow lists | `suno.follow()`, `suno.unfollow()`, `suno.following()`, `suno.followers()` | The lists need a session |
 | Own playlists | `suno.myPlaylists()`, `suno.createPlaylist()`, `suno.addToPlaylist()`, `suno.removeFromPlaylist()`, `suno.updatePlaylist()`, `suno.trashPlaylist()` | `restorePlaylist()` is unverified |
 | Public search | `suno.searchPublic()` | About 200 results deep at most |
+| Search suggestions | `suno.suggest()` | Styles, creators, playlists, songs |
+| Similar songs, remixes | `suno.similar()`, `suno.remixes()`, `suno.remixCount()`, `suno.parent()` | Need a session |
+| Remix sources, comments | `suno.remixSources()`, `suno.comments()` | No session needed |
+| Listen history, player state | `suno.listenHistory()`, `suno.playbarState()` | The last 100 listens |
+| Notifications | `suno.notifications()`, `suno.unreadNotifications()` | Read only |
 
 A generation measured end to end on 2026-08-17: submitted, `queued` at 4s,
 `streaming` at 22s, both clips `complete` at 145s, two MP3s on disk at ~185 kbps
@@ -266,6 +271,25 @@ anonymously while the profile they belong to reads fine without a session.
 Not verified: that `undo_trash: true` restores a trashed playlist (`restorePlaylist()`
 sends it), and whether an anonymous read can see a private playlist. The client reads
 the account's own playlists with the session wherever it needs their contents.
+
+## Around a song, and the account's listening (measured 2026-10-27)
+
+All reads, all exercised live on 2026-10-27, signed in and signed out. Wire details
+are in [API.md](API.md) §3.26 to §3.33.
+
+Only two of them answer anonymously: a song's comments and the sources of a remix.
+Similar songs, remixes, the parent, suggestions, history, player state and
+notifications are 401 without a session.
+
+**A parent that is not there still answers 200.** `/api/clips/parent` on an original
+returns the owner's name with `is_public: false` and no `id`; `suno.parent()` reads
+that as no parent.
+
+**Remixes undercount their count.** 55 by `/remixes/count`, 46 by walking
+`/remixes`, presumably private or removed ones. The walk pages by cursor only.
+
+**The listen history is the last 100.** Larger limits change nothing and
+`has_more` is then false.
 
 ## The captcha gate does block creates (measured 2026-08-18)
 

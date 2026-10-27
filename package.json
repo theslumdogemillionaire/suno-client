@@ -1,6 +1,6 @@
 {
   "name": "suno-client",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Typed Suno client for Node with response-drift detection and a live canary",
   "keywords": [
     "suno",

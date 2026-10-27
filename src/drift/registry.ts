@@ -59,6 +59,18 @@ export const CONSUMED_PATHS: Record<string, readonly string[]> = {
   'profile.followers': ['profiles[].handle'],
   'playlist.mine': ['playlists[].id', 'num_total_results'],
   'search.public': ['result.tag_song.result[].id', 'result.tag_song.total_hits'],
+  'search.suggest': ['feed.items[].content_type', 'feed.items[].content_item'],
+  'clips.similar': ['similar_clips[].id'],
+  'clips.remixes': ['remixes[].id', 'has_more', 'next_cursor'],
+  'clips.remixCount': ['count'],
+  'clips.attribution': ['source_clips[].clip_id'],
+  'clips.parent': ['is_public'],
+  'clip.comments': ['results[].id', 'results[].content', 'next_cursor'],
+  'listen.history': ['history[].content.id', 'history[].listened_at', 'next_cursor', 'has_more'],
+  'player.state': ['song_ids_in_queue', 'song_index', 'song_play_time'],
+  'notifications.list': ['notifications[].id', 'notifications[].text[].text'],
+  'notifications.badge': ['badge_count'],
+  'profile.remixesInspired': ['clips[].id', 'total_count'],
 };
 
 /**

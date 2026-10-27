@@ -1375,6 +1375,121 @@ asked: some are filtered out after the count. `from_index` beyond roughly 200 re
 empty result, so the index serves a window and deep paging does not work, whatever
 `total_hits` says. No trailing slash.
 
+
+### 3.26 `GET /api/clips/get_similar?id=<clip_id>`: similar songs
+
+`LIVE 2026-10-27`. Needs a session (401 anonymous).
+
+```ts
+interface SimilarResponse { similar_clips: Clip[] }
+```
+
+Ten clips on every call measured; a `limit` parameter is ignored.
+
+### 3.27 `GET /api/clips/remixes?clip_id=<id>&limit=<n>[&cursor=<c>]`: remixes of a clip
+
+`LIVE 2026-10-27`. Needs a session.
+
+```ts
+interface RemixesResponse { remixes: Clip[]; has_more: boolean; next_cursor?: string }
+```
+
+Pages by `cursor` only: `offset`, `page` and `from_index` are ignored, and a cursor
+that is not one answers 400 `Invalid remix request.` `limit` 100 was accepted. The
+walk returned fewer clips (46) than the count of 3.28 (55).
+
+### 3.28 `GET /api/clips/remixes/count?clip_id=<id>`
+
+`LIVE 2026-10-27`. Needs a session. `{ count: number; is_capped: boolean }`.
+
+### 3.29 `GET /api/clips/{clip_id}/attribution`: what a remix was made from
+
+`LIVE 2026-10-27`. **No session needed.**
+
+```ts
+interface AttributionResponse {
+  source_clips: Array<{
+    clip_id: string;
+    relationship: string;          // "AG" on every source seen
+    is_deleted: boolean;
+    title: string;
+    image_url: string;
+    audio_url: string;
+    user: { user_id: string; user_display_name: string; user_handle: string; user_avatar_url: string };
+  }>;
+}
+```
+
+Empty for an original.
+
+### 3.30 `GET /api/clips/parent?clip_id=<id>`
+
+`LIVE 2026-10-27`. Needs a session. With a public parent:
+`{ id, title, image_url, is_public: true, user_display_name, user_handle,
+user_avatar_image_url }`. Without one (an original, or a private parent) it still
+answers 200, with `is_public: false`, the user fields and **no `id`**.
+
+### 3.31 `GET /api/gen/{clip_id}/comments?order=<o>[&cursor=<c>]`: comments
+
+`LIVE 2026-10-27`. **No session needed**; anonymous paging works too.
+
+```ts
+interface CommentsResponse {
+  results: Array<{
+    id: string; clip_id: string; content: string; created_at: string; num_likes: number;
+    user_id: string; user_handle: string; user_display_name: string; user_avatar_url: string;
+    user_is_verified: boolean; user_comments_blocked: boolean;
+    num_replies: number;
+    replies: Comment[];              // the first replies only
+    reply_continuation_token?: string;
+    track_timestamp?: number;
+  }>;
+  total_count: number;
+  next_cursor?: string;
+  allow_comment: boolean;
+}
+```
+
+`order` is `newest`, `oldest` or `most_liked`; anything else is 422 `literal_error`.
+Without `order` the server still answers. 20 comments to a page.
+
+### 3.32 `GET /api/profiles/listen-history?limit=<n>[&cursor=<c>]`
+
+`LIVE 2026-10-27`. Needs a session.
+
+```ts
+interface ListenHistoryResponse {
+  history: Array<{ content: Clip; listened_at: string }>;
+  next_cursor?: string;
+  has_more: boolean;
+}
+```
+
+Suno keeps 100 listens: `limit` 100, 500 and 1000 all returned 100 with
+`has_more: false`. A song heard twice appears twice.
+
+### 3.33 Other reads around the account
+
+All `LIVE 2026-10-27`, all needing a session.
+
+- `GET /api/music_player/playbar_state`: `{ playbar_state: "playing" | "paused",
+  song_ids_in_queue: string[], song_index, song_play_time, repeat_state, volume,
+  action_time, device_id, device_type, context_id, context_type }`. The web player
+  writes it back with a POST of the same fields; not covered.
+- `GET /api/notification/v3`: `{ notified_at, notifications: [{ id,
+  notification_type, content_id, is_read, updated_at, template, text: [{ text, bold,
+  action? }], avatars: [{ image_url, action }], thumbnail_url, action: { type:
+  "navigate", url: "suno://suno.com/..." } }] }`. Not paged.
+- `GET /api/notification/v2/badge-count`: `{ badge_count: number }`.
+- `POST /api/unified/search/suggest` with `{ term, suggestion_size, content_size }`:
+  `{ feed: { items: [{ content_type, content_id, match_reason?, content_item }] } }`.
+  `content_type` was `genre`, `creator_profile` (a follow-list profile, 3.20),
+  `playlist_shortcut` or `clip`; `match_reason` `self_name`, `from_matched_creator`
+  or `from_matched_genre`. An empty term returns no items.
+- `GET /api/profiles/{handle}/remixes-inspired?page=<n>&page_size=<n>`: `{ clips:
+  Clip[], current_page, total_pages, total_count }`, the songs others made from this
+  creator's songs.
+
 ---
 
 ## 4. Clip lifecycle

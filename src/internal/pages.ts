@@ -47,3 +47,44 @@ export async function* walkNumberedPages<T>(options: WalkOptions<T>): AsyncGener
     if (typeof total === 'number' && seen.size >= total) return;
   }
 }
+
+/**
+ * Walk an endpoint paged by an opaque `next_cursor`, yielding each item once.
+ *
+ * The first request carries no cursor at all. The walk ends when the server
+ * says there is no more, sends no cursor, sends back the cursor it was given,
+ * or a page adds nothing new; and at `maxPages` when the caller set one.
+ */
+export interface CursorPage<T> {
+  items: readonly T[];
+  nextCursor?: string | null | undefined;
+  /** Absent on some endpoints; the cursor alone then decides. */
+  hasMore?: boolean | null | undefined;
+}
+
+export interface CursorWalkOptions<T> {
+  fetchPage: (cursor: string | undefined) => Promise<CursorPage<T>>;
+  keyOf: (item: T) => string;
+  maxPages?: number;
+}
+
+export async function* walkCursorPages<T>(options: CursorWalkOptions<T>): AsyncGenerator<T, void, undefined> {
+  const seen = new Set<string>();
+  const maxPages = options.maxPages ?? Number.POSITIVE_INFINITY;
+  let cursor: string | undefined;
+
+  for (let page = 1; page <= maxPages; page++) {
+    const { items, nextCursor, hasMore } = await options.fetchPage(cursor);
+    let added = 0;
+    for (const item of items) {
+      const key = options.keyOf(item);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      added += 1;
+      yield item;
+    }
+    if (items.length === 0 || added === 0 || hasMore === false) return;
+    if (nextCursor === undefined || nextCursor === null || nextCursor === '' || nextCursor === cursor) return;
+    cursor = nextCursor;
+  }
+}

@@ -5,7 +5,9 @@ import {
   iterateFollowers,
   iterateFollowing,
   iterateProfileClips,
+  iterateRemixesInspired,
   listFollowing,
+  listRemixesInspired,
   setFollowing,
 } from '../../src/api/profile.js';
 import {
@@ -303,5 +305,27 @@ describe('setFollowing', () => {
 
     expect((await failure(setFollowing(client, '', true))).code).toBe('invalid_input');
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe('remixes inspired', () => {
+  it('pages by number with page_size, until the total', async () => {
+    const { client, calls } = stubClient(
+      inOrder([
+        { body: { clips: range('r', 0, 2), current_page: 1, total_pages: 2, total_count: 3 } },
+        { body: { clips: range('r', 2, 1), current_page: 2, total_pages: 2, total_count: 3 } },
+      ]),
+    );
+
+    const clips = await collect(iterateRemixesInspired(client, HANDLE, { pageSize: 2 }));
+
+    expect(clips.map((c) => c.id)).toEqual(['r0', 'r1', 'r2']);
+    expect(callAt(calls, 0).url.pathname).toBe(`/api/profiles/${HANDLE}/remixes-inspired`);
+    expect(Object.fromEntries(callAt(calls, 1).url.searchParams)).toEqual({ page: '2', page_size: '2' });
+  });
+
+  it('reads one page', async () => {
+    const { client } = stubClient(always({ body: { clips: [clip('a')], total_count: 1 } }));
+    expect((await listRemixesInspired(client, HANDLE)).total_count).toBe(1);
   });
 });

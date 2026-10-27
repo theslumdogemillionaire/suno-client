@@ -267,3 +267,60 @@ export async function setFollowing(
     ...(signal ? { signal } : {}),
   });
 }
+
+const RemixesInspiredSchema = z
+  .object({
+    clips: z.array(z.unknown()).nullish().transform(salvageClips),
+    current_page: z.number().nullish(),
+    total_pages: z.number().nullish(),
+    total_count: z.number().nullish(),
+  })
+  .passthrough();
+
+export type RemixesInspiredPage = z.infer<typeof RemixesInspiredSchema>;
+
+/**
+ * One page of the songs others made from this creator's songs: remixes,
+ * covers, extends. Needs a session. `pageSize` defaults to 20.
+ */
+export async function listRemixesInspired(
+  client: SunoClient,
+  handle: string,
+  options: { page?: number; pageSize?: number; signal?: AbortSignal } = {},
+): Promise<RemixesInspiredPage> {
+  const pageSize = options.pageSize ?? PROFILE_PAGE_SIZE;
+  if (!Number.isInteger(pageSize) || pageSize < 1) {
+    throw new SunoError({ code: 'invalid_input', message: `pageSize must be a positive integer, got ${pageSize}` });
+  }
+  return client.request({
+    method: 'GET',
+    path: `${PROFILES_PATH}/${pathSegment(checkHandle(handle))}/remixes-inspired`,
+    query: { page: checkPage(options.page ?? 1), page_size: pageSize },
+    schema: RemixesInspiredSchema,
+    endpointKey: 'profile.remixesInspired',
+    ...(options.signal ? { signal: options.signal } : {}),
+  });
+}
+
+/** Every song others made from this creator's songs, each once. */
+export function iterateRemixesInspired(
+  client: SunoClient,
+  handle: string,
+  options: { pageSize?: number; maxPages?: number; signal?: AbortSignal } = {},
+): AsyncGenerator<Clip, void, undefined> {
+  const name = checkHandle(handle);
+  const pageSize = options.pageSize ?? PROFILE_PAGE_SIZE;
+  return walkNumberedPages<Clip>({
+    fetchPage: async (page) => {
+      const data = await listRemixesInspired(client, name, {
+        page,
+        pageSize,
+        ...(options.signal ? { signal: options.signal } : {}),
+      });
+      return { items: data.clips, total: data.total_count };
+    },
+    keyOf: (clip) => clip.id,
+    pageSize,
+    ...(options.maxPages !== undefined ? { maxPages: options.maxPages } : {}),
+  });
+}
